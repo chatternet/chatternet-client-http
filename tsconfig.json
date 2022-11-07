@@ -1,0 +1,17 @@
+{
+  "extends": "aegir/src/config/tsconfig.aegir.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "baseUrl": "./",
+    "paths": {
+      "*": ["./types/*"]
+    },
+    "target": "es2015"
+  },
+  "include": [
+    "src",
+    "test",
+    "types"
+  ]
+}
