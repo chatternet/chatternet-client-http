@@ -139,14 +139,14 @@ export interface Message extends BaseObject {
   id?: Uri;
   type: String;
   actor: Uri;
-  object: Uri;
+  object: Uri[];
   published: DateTime;
   proof?: Proof;
 }
 
 export async function newMessage(
   actorDid: Uri,
-  objectId: Uri,
+  objectsId: Uri[],
   type: string,
   published: DateTime | null,
   key: Key,
@@ -158,7 +158,7 @@ export async function newMessage(
     "@context": [CONTEXT_ACTIVITY_STREAMS, CONTEXT_CREDENTIALS],
     type,
     actor,
-    object: objectId,
+    object: objectsId,
     published: published != null ? published : getIsoDate(),
     ...members,
   };

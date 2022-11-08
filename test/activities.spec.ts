@@ -30,7 +30,7 @@ describe("activities", () => {
   it("builds an inbox", async () => {
     const jwk = await newKey();
     const did = didFromKey(jwk);
-    const message = await Activities.newMessage(did, "urn:cid:a", "Create", null, jwk);
+    const message = await Activities.newMessage(did, ["urn:cid:a"], "Create", null, jwk);
     const inbox = Activities.newInbox("did:example:a/actor", [message], "urn:cid:a");
     assert.equal(inbox.id, "did:example:a/actor/inbox?after=urn:cid:a");
     assert.equal(inbox.orderedItems[0].id, message.id);
@@ -71,7 +71,7 @@ describe("activities", () => {
   it("builds and verifies a message", async () => {
     const jwk = await newKey();
     const did = didFromKey(jwk);
-    const message = await Activities.newMessage(did, "urn:cid:a", "Create", null, jwk, {
+    const message = await Activities.newMessage(did, ["urn:cid:a"], "Create", null, jwk, {
       to: "did:example:a",
     });
     assert.ok(await Activities.verifyMessage(message));
@@ -83,7 +83,7 @@ describe("activities", () => {
   it("doesnt verify modified message", async () => {
     const jwk = await newKey();
     const did = didFromKey(jwk);
-    const message = await Activities.newMessage(did, "urn:cid:a", "Create", null, jwk, {
+    const message = await Activities.newMessage(did, ["urn:cid:a"], "Create", null, jwk, {
       to: "did:example:a",
     });
     message.to = "did:example:b";
@@ -93,7 +93,7 @@ describe("activities", () => {
   it("doesnt verify message with invalid ID", async () => {
     const jwk = await newKey();
     const did = didFromKey(jwk);
-    const message = await Activities.newMessage(did, "urn:cid:a", "Create", null, jwk, {
+    const message = await Activities.newMessage(did, ["urn:cid:a"], "Create", null, jwk, {
       to: "did:example:a",
     });
     let invalid = await sign({ ...omit(message, "proof"), id: "urn:cid:a" }, jwk);
