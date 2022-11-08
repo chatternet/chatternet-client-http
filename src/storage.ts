@@ -1,5 +1,5 @@
-import type { Message } from "./activities.js";
 import { didFromKey } from "./didkey.js";
+import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
@@ -95,7 +95,7 @@ class StoreKeyPair {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
-  async put(key: Ed25519VerificationKey2020, cryptoKey: CryptoKey) {
+  async put(key: Key, cryptoKey: CryptoKey) {
     const did = didFromKey(key);
     const exported = key.export({ publicKey: true, privateKey: true });
     const plaintext = new TextEncoder().encode(JSON.stringify(exported));
@@ -110,7 +110,7 @@ class StoreKeyPair {
     await transaction.store.put(record);
   }
 
-  async get(did: string, cryptoKey: CryptoKey): Promise<Ed25519VerificationKey2020 | undefined> {
+  async get(did: string, cryptoKey: CryptoKey): Promise<Key | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
     const record: RecordKeyPair | undefined = await transaction.store.get(did);
     if (!record) return;
@@ -161,37 +161,6 @@ class StoreNameSuffix {
     const nameSuffix: RecordNameSuffix | undefined = await transaction.store.get(did);
     if (!nameSuffix) return;
     return { name: nameSuffix.name, suffix: nameSuffix.suffix };
-  }
-}
-
-interface RecordMessage {
-  message: Message;
-}
-
-class StoreMessage {
-  static DEFAULT_NAME = "Message";
-
-  constructor(readonly db: IDBPDatabase, readonly name: string = StoreMessage.DEFAULT_NAME) {}
-
-  static create(db: IDBPDatabase, name: string = StoreMessage.DEFAULT_NAME) {
-    db.createObjectStore(name, { keyPath: "message.id" });
-    return new StoreMessage(db, name);
-  }
-
-  async clear() {
-    await this.db.transaction(this.name, "readwrite").store.clear();
-  }
-
-  async put(message: Message) {
-    const transaction = this.db.transaction(this.name, "readwrite");
-    const record: RecordMessage = { message };
-    await transaction.store.put(record);
-  }
-
-  async getAll(): Promise<Message[]> {
-    const transaction = this.db.transaction(this.name, "readonly");
-    const records: RecordMessage[] = await transaction.store.getAll();
-    return records.map((x) => x.message);
   }
 }
 
@@ -281,30 +250,25 @@ export class DbPeer {
 
   constructor(
     readonly db: IDBPDatabase,
-    readonly context: StoreMessage,
     readonly nameSuffix: StoreNameSuffix,
     readonly server: StoreServer
   ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
-    let storeContext = undefined;
     let storeNameSuffix = undefined;
     let storeServer = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
-        storeContext = StoreMessage.create(db, "StoreContext");
         storeNameSuffix = StoreNameSuffix.create(db);
         storeServer = StoreServer.create(db);
       },
     });
-    storeContext = storeContext ? storeContext : new StoreMessage(db, "StoreContext");
     storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreNameSuffix(db);
     storeServer = storeServer ? storeServer : new StoreServer(db);
-    return new DbPeer(db, storeContext, storeNameSuffix, storeServer);
+    return new DbPeer(db, storeNameSuffix, storeServer);
   }
 
   async clear() {
-    await this.context.clear();
     await this.nameSuffix.clear();
     await this.server.clear();
   }

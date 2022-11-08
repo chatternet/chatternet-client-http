@@ -1,4 +1,3 @@
-import * as Activities from "../src/activities.js";
 import { didFromKey, newKey } from "../src/didkey.js";
 import * as Storage from "../src/storage.js";
 import assert from "assert";
@@ -60,21 +59,6 @@ describe("storage", () => {
   });
 
   describe("db peer", () => {
-    it("puts and gets context", async () => {
-      const db = await Storage.DbPeer.new();
-      await db.clear();
-      const jwk = await newKey();
-      const did = didFromKey(jwk);
-      const message1 = await Activities.newMessage(did, "urn:cid:a", "Create", null, jwk);
-      const message2 = await Activities.newMessage(did, "urn:cid:b", "Create", null, jwk);
-      await db.context.put(message1);
-      await db.context.put(message2);
-      assert.deepEqual(
-        (await db.context.getAll()).map((x) => x.id),
-        [message1.id, message2.id]
-      );
-    });
-
     it("puts and gets name suffix", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();

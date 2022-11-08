@@ -44,7 +44,7 @@ It can be used to describe arbitrary data as well as interactions between actors
 The [DID Key](https://github.com/digitalbazaar/did-method-key/) standard uses public-private key pair cryptography to prove identity.
 An account is created locally by a user,
 and the private key created by that user allows them to prove their identity.
-[Verifiable Credentials](https://www.w3.org/TR/vc-data-model/) allow the users to verify the authenticity of messages.
+[Verifiable Credential Proofs](https://w3c.github.io/vc-data-integrity/) allow the users to verify the authenticity of messages.
 
 ### Networking
 
