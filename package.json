@@ -32,9 +32,9 @@
     "fmt": "prettier -w {test,src,types}/**/*.{js,ts}"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "3.3.0",
+    "@trivago/prettier-plugin-sort-imports": "3.4.0",
     "@types/lodash-es": "4.17.6",
-    "aegir": "37.5.5",
+    "aegir": "37.5.6",
     "assert": "2.0.0",
     "fake-indexeddb": "4.0.0",
     "mock-local-storage": "1.1.23",
@@ -47,11 +47,11 @@
     "@digitalbazaar/vc": "5.0.0",
     "crypto-ld": "7.0.0",
     "events": "3.3.0",
-    "idb": "7.1.0",
+    "idb": "7.1.1",
     "jsonld": "8.1.0",
     "jsonld-signatures": "11.0.0",
     "lodash-es": "4.17.21",
-    "multiformats": "9.9.0"
+    "multiformats": "10.0.2"
   },
   "overrides": {
     "security-context": "https://registry.npmjs.org/@docknetwork/security-context/-/security-context-4.0.1-0.tgz"
