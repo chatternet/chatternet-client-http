@@ -1,5 +1,6 @@
 import * as Activities from "./activities.js";
 import * as DidKey from "./didkey.js";
+import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
 import type { IdNameSuffix } from "./storage.js";
 import { orDefault } from "./utils.js";
@@ -44,9 +45,8 @@ async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> 
 export class ChatterNet {
   constructor(readonly dbs: Dbs, readonly servers: string[]) {}
 
-  static async newAccount(name: string, password: string): Promise<string> {
+  static async newAccount(key: Key, name: string, password: string): Promise<string> {
     const db = await Storage.DbDevice.new();
-    const key = await DidKey.newKey();
     const did = DidKey.didFromKey(key);
     const salt = await db.idSalt.getPut(did);
     const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
