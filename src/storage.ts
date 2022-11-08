@@ -3,7 +3,8 @@ import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
-export interface NameSuffix {
+export interface IdNameSuffix {
+  id: string;
   name: string;
   suffix: string;
 }
@@ -124,20 +125,20 @@ class StoreKeyPair {
   }
 }
 
-interface RecordNameSuffix {
+interface RecordIdNameSuffix {
   did: string;
   name: string;
   suffix: string;
 }
 
-class StoreNameSuffix {
-  static DEFAULT_NAME = "NameSuffix";
+class StoreIdNameSuffix {
+  static DEFAULT_NAME = "IdNameSuffix";
 
-  constructor(readonly db: IDBPDatabase, readonly name: string = StoreNameSuffix.DEFAULT_NAME) {}
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreIdNameSuffix.DEFAULT_NAME) {}
 
-  static create(db: IDBPDatabase, name: string = StoreNameSuffix.DEFAULT_NAME) {
+  static create(db: IDBPDatabase, name: string = StoreIdNameSuffix.DEFAULT_NAME) {
     db.createObjectStore(name, { keyPath: "did" }).createIndex("name", "name");
-    return new StoreNameSuffix(db, name);
+    return new StoreIdNameSuffix(db, name);
   }
 
   async clear() {
@@ -146,21 +147,30 @@ class StoreNameSuffix {
 
   async put(did: string, name: string) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const others: RecordNameSuffix[] = await transaction.store.index("name").getAll(name);
+    const others: RecordIdNameSuffix[] = await transaction.store.index("name").getAll(name);
     const fullSuffix = did.split("").reverse().join("");
     const suffix = buildSuffix(
       fullSuffix,
       others.filter((x) => x.did !== did).map((x) => x.suffix)
     );
-    const record: RecordNameSuffix = { did, name, suffix };
+    const record: RecordIdNameSuffix = { did, name, suffix };
     await transaction.store.put(record);
   }
 
-  async get(did: string): Promise<NameSuffix | undefined> {
+  async get(did: string): Promise<IdNameSuffix | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
-    const nameSuffix: RecordNameSuffix | undefined = await transaction.store.get(did);
+    const nameSuffix: RecordIdNameSuffix | undefined = await transaction.store.get(did);
     if (!nameSuffix) return;
-    return { name: nameSuffix.name, suffix: nameSuffix.suffix };
+    return { id: did, name: nameSuffix.name, suffix: nameSuffix.suffix };
+  }
+
+  async getAll(): Promise<IdNameSuffix[]> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return (await transaction.store.getAll()).map((x) => ({
+      id: x.did,
+      name: x.name,
+      suffix: x.suffix,
+    }));
   }
 }
 
@@ -218,7 +228,7 @@ export class DbDevice {
     readonly db: IDBPDatabase,
     readonly idSalt: StoreIdSalt,
     readonly keyPair: StoreKeyPair,
-    readonly nameSuffix: StoreNameSuffix
+    readonly idNameSuffix: StoreIdNameSuffix
   ) {}
 
   static async new(name: string = DbDevice.DEFAULT_NAME): Promise<DbDevice> {
@@ -229,19 +239,19 @@ export class DbDevice {
       upgrade: (db) => {
         storeIdSalt = StoreIdSalt.create(db);
         storeKeyPair = StoreKeyPair.create(db);
-        storeNameSuffix = StoreNameSuffix.create(db);
+        storeNameSuffix = StoreIdNameSuffix.create(db);
       },
     });
     storeIdSalt = storeIdSalt ? storeIdSalt : new StoreIdSalt(db);
     storeKeyPair = storeKeyPair ? storeKeyPair : new StoreKeyPair(db);
-    storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreNameSuffix(db);
+    storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreIdNameSuffix(db);
     return new DbDevice(db, storeIdSalt, storeKeyPair, storeNameSuffix);
   }
 
   async clear() {
     await this.idSalt.clear();
     await this.keyPair.clear();
-    await this.nameSuffix.clear();
+    await this.idNameSuffix.clear();
   }
 }
 
@@ -250,7 +260,7 @@ export class DbPeer {
 
   constructor(
     readonly db: IDBPDatabase,
-    readonly nameSuffix: StoreNameSuffix,
+    readonly idNameSuffix: StoreIdNameSuffix,
     readonly server: StoreServer
   ) {}
 
@@ -259,17 +269,17 @@ export class DbPeer {
     let storeServer = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
-        storeNameSuffix = StoreNameSuffix.create(db);
+        storeNameSuffix = StoreIdNameSuffix.create(db);
         storeServer = StoreServer.create(db);
       },
     });
-    storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreNameSuffix(db);
+    storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreIdNameSuffix(db);
     storeServer = storeServer ? storeServer : new StoreServer(db);
     return new DbPeer(db, storeNameSuffix, storeServer);
   }
 
   async clear() {
-    await this.nameSuffix.clear();
+    await this.idNameSuffix.clear();
     await this.server.clear();
   }
 }

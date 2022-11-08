@@ -43,18 +43,12 @@ describe("storage", () => {
     it("puts and gets name suffix", async () => {
       const db = await Storage.DbDevice.new();
       await db.clear();
-      await db.nameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      await db.nameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.ok(!(await db.nameSuffix.get("did:example:b")));
-      await db.nameSuffix.put("did:example:b", "name 2");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:b"), { name: "name 2", suffix: "" });
-      await db.nameSuffix.put("did:example:c", "name 2");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:b"), { name: "name 2", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:c"), { name: "name 2", suffix: "c" });
+      await db.idNameSuffix.put("did:example:a", "name 1");
+      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+        id: "did:example:a",
+        name: "name 1",
+        suffix: "",
+      });
     });
   });
 
@@ -62,18 +56,50 @@ describe("storage", () => {
     it("puts and gets name suffix", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      await db.nameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      await db.nameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.ok(!(await db.nameSuffix.get("did:example:b")));
-      await db.nameSuffix.put("did:example:b", "name 2");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:b"), { name: "name 2", suffix: "" });
-      await db.nameSuffix.put("did:example:c", "name 2");
-      assert.deepEqual(await db.nameSuffix.get("did:example:a"), { name: "name 1", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:b"), { name: "name 2", suffix: "" });
-      assert.deepEqual(await db.nameSuffix.get("did:example:c"), { name: "name 2", suffix: "c" });
+      await db.idNameSuffix.put("did:example:a", "name 1");
+      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+        id: "did:example:a",
+        name: "name 1",
+        suffix: "",
+      });
+      await db.idNameSuffix.put("did:example:a", "name 1");
+      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+        id: "did:example:a",
+        name: "name 1",
+        suffix: "",
+      });
+      assert.ok(!(await db.idNameSuffix.get("did:example:b")));
+      await db.idNameSuffix.put("did:example:b", "name 2");
+      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+        id: "did:example:a",
+        name: "name 1",
+        suffix: "",
+      });
+      assert.deepEqual(await db.idNameSuffix.get("did:example:b"), {
+        id: "did:example:b",
+        name: "name 2",
+        suffix: "",
+      });
+      await db.idNameSuffix.put("did:example:c", "name 2");
+      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+        id: "did:example:a",
+        name: "name 1",
+        suffix: "",
+      });
+      assert.deepEqual(await db.idNameSuffix.get("did:example:b"), {
+        id: "did:example:b",
+        name: "name 2",
+        suffix: "",
+      });
+      assert.deepEqual(await db.idNameSuffix.get("did:example:c"), {
+        id: "did:example:c",
+        name: "name 2",
+        suffix: "c",
+      });
+      assert.deepEqual(
+        new Set((await db.idNameSuffix.getAll()).map((x) => x.id)),
+        new Set(["did:example:a", "did:example:b", "did:example:c"])
+      );
     });
 
     it("puts and gets servers", async () => {

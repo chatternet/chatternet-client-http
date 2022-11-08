@@ -1,6 +1,7 @@
 import * as Activities from "./activities.js";
 import * as DidKey from "./didkey.js";
 import * as Storage from "./storage.js";
+import type { IdNameSuffix } from "./storage.js";
 import { orDefault } from "./utils.js";
 
 interface Dbs {
@@ -50,8 +51,13 @@ export class ChatterNet {
     const salt = await db.idSalt.getPut(did);
     const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
     await db.keyPair.put(key, cryptoKey);
-    await db.nameSuffix.put(did, name);
+    await db.idNameSuffix.put(did, name);
     return did;
+  }
+
+  static async getDeviceDidNames(): Promise<IdNameSuffix[]> {
+    const db = await Storage.DbDevice.new();
+    return (await db.idNameSuffix.getAll()).filter((x) => x.id.startsWith("did:"));
   }
 
   static async new(
@@ -67,7 +73,7 @@ export class ChatterNet {
     const key = await device.keyPair.get(did, cryptoKey);
     if (!key) throw Error(`there is no record for the given DID: ${did}`);
 
-    const nameSuffix = await device.nameSuffix.get(did);
+    const nameSuffix = await device.idNameSuffix.get(did);
     if (!nameSuffix) throw Error(`there is no name for the given DID: ${did}`);
     const { name } = nameSuffix;
 
@@ -98,10 +104,11 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
-  async getNameSuffix(did: string, maxLength: number = 8): Promise<Storage.NameSuffix> {
-    let nameSuffix = await this.dbs.peer.nameSuffix.get(did);
-    if (nameSuffix) return nameSuffix;
+  async getIdNameSuffix(did: string, maxLength: number = 8): Promise<IdNameSuffix> {
+    let idNameSuffix = await this.dbs.peer.idNameSuffix.get(did);
+    if (idNameSuffix) return idNameSuffix;
     return {
+      id: did,
       name: "",
       suffix: did.split("").reverse().slice(0, maxLength).join(""),
     };
