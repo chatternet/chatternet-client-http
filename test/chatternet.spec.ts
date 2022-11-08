@@ -1,6 +1,6 @@
 import { ChatterNet } from "../src/chatternet.js";
 import { DbDevice, DbPeer } from "../src/storage.js";
-import assert from "assert";
+import * as assert from "assert";
 import "fake-indexeddb/auto";
 import "mock-local-storage";
 

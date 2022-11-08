@@ -1,4 +1,4 @@
-declare module "jsonld" {
+const jsonld = {
   /**
    * A JavaScript implementation of the JSON-LD API.
    *
@@ -59,5 +59,7 @@ declare module "jsonld" {
    *
    * @return a Promise that resolves to the normalized output.
    */
-  async function canonize(input, options);
-}
+  canonize: async(input, options),
+};
+
+export default jsonld;

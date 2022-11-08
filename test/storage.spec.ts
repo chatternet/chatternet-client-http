@@ -1,6 +1,6 @@
 import { didFromKey, newKey } from "../src/didkey.js";
 import * as Storage from "../src/storage.js";
-import assert from "assert";
+import * as assert from "assert";
 import "fake-indexeddb/auto";
 
 // @ts-ignore

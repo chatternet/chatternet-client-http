@@ -1,8 +1,8 @@
-declare module "jsonld-signatures" {
-  /*!
-   * Copyright (c) 2010-2022 Digital Bazaar, Inc. All rights reserved.
-   */
+/*!
+ * Copyright (c) 2010-2022 Digital Bazaar, Inc. All rights reserved.
+ */
 
+const jsigs = {
   /**
    * Cryptographically signs the provided document by adding a `proof` section,
    * based on the provided suite and proof purpose.
@@ -32,7 +32,10 @@ declare module "jsonld-signatures" {
    *
    * @returns {Promise<object>} Resolves with signed document.
    */
-  async function sign(document, options = {});
+  sign: async(
+    document,
+    ({ suite, purpose, documentLoader, expansionMap, addSuiteContext = true } = {})
+  ),
 
   /**
    * Verifies the linked data signature on the provided document.
@@ -62,7 +65,10 @@ declare module "jsonld-signatures" {
    *   if `false` an `error` property will be present, with `error.errors`
    *   containing all of the errors that occurred during the verification process.
    */
-  async function verify(document, options = {});
+  verify: async(document, ({ suite, purpose, documentLoader, expansionMap } = {})),
 
-  let purposes: { AssertionProofPurpose };
-}
+  // expose ProofPurpose classes to enable extensions
+  purposes: { AssertionProofPurpose },
+};
+
+export default jsigs;

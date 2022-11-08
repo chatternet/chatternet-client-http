@@ -1,6 +1,6 @@
 import { didFromKey, newKey } from "../src/didkey.js";
 import * as Credentials from "../src/signatures.js";
-import assert from "assert";
+import * as assert from "assert";
 
 describe("credentials", () => {
   it("builds same CID for same doc", async () => {

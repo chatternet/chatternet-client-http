@@ -1,5 +1,5 @@
 import * as DidKey from "../src/didkey.js";
-import assert from "assert";
+import * as assert from "assert";
 
 describe("did key", () => {
   const did = "did:key:z6MkqesEr2GVFXc3qWZi9PzMqtvMMyR5gB3P3R5GTsB7YTRC";

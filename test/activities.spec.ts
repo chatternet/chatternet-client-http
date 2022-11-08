@@ -1,7 +1,7 @@
 import * as Activities from "../src/activities.js";
 import { didFromKey, newKey } from "../src/didkey.js";
 import { sign } from "../src/signatures.js";
-import assert from "assert";
+import * as assert from "assert";
 import { omit } from "lodash-es";
 
 describe("activities", () => {
