@@ -37,6 +37,7 @@
     "aegir": "37.5.5",
     "assert": "2.0.0",
     "fake-indexeddb": "4.0.0",
+    "mock-local-storage": "1.1.23",
     "prettier": "2.7.1"
   },
   "dependencies": {

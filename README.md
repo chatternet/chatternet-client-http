@@ -71,8 +71,6 @@ wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 nvm install node
 ```
 
-NOTE: you will need a node version >= 19.0.0 to run the test suite.
-
 ### Installation
 
 Get the source code using Git:
@@ -113,6 +111,8 @@ This is a Typescript template which necessitates further configuration:
 
 ### Testing
 
+NOTE: you will need a node version >= 19.0.0 to run the test suite.
+
 Test are added to the `test` directory with the suffix `.spec.ts`.
 They can import from `src` using Typescript imports and ESM imports.
 
@@ -120,3 +120,12 @@ The tests are themselves built and output in `dist/test`.
 From there, they import from the built `dist/src`.
 In this way the tests run as compiled JS,
 calling code from the distributed module.
+
+To run integration tests against a server,
+set the environment variable `CHATTERNET_TEST_SERVER`.
+
+For example, to verify if a new node builds and connects:
+
+```bash
+CHATTERNET_TEST_SERVER='http://127.0.0.1:3030' npm run test -- -- -f 'chatter net builds new'
+```
