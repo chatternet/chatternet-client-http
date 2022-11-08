@@ -1,4 +1,4 @@
-import * as DidKey from "../src/didkey.js";
+import { DidKey } from "../src/index.js";
 import * as assert from "assert";
 
 describe("did key", () => {

@@ -1,5 +1,5 @@
-import * as Activities from "./activities.js";
 import * as DidKey from "./didkey.js";
+import * as Messages from "./messages.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
 import type { IdNameSuffix } from "./storage.js";
@@ -11,7 +11,7 @@ interface Dbs {
 }
 
 async function postMessage(
-  message: Activities.Message,
+  message: Messages.Message,
   did: string,
   server: string
 ): Promise<Response> {
@@ -24,7 +24,7 @@ async function postMessage(
   return await fetch(request);
 }
 
-async function postActor(actor: Activities.Actor, did: string, server: string): Promise<Response> {
+async function postActor(actor: Messages.Actor, did: string, server: string): Promise<Response> {
   const url = new URL(`/did/${did}/actor`, server);
   const request = new Request(url, {
     method: "POST",
@@ -60,6 +60,11 @@ export class ChatterNet {
     return (await db.idNameSuffix.getAll()).filter((x) => x.id.startsWith("did:"));
   }
 
+  static async clearDbs() {
+    await (await Storage.DbDevice.new()).clear();
+    await (await Storage.DbPeer.new()).clear();
+  }
+
   static async new(
     did: string,
     password: string,
@@ -77,9 +82,9 @@ export class ChatterNet {
     if (!nameSuffix) throw Error(`there is no name for the given DID: ${did}`);
     const { name } = nameSuffix;
 
-    const actor: Activities.Actor = await localGetOrElse(
+    const actor: Messages.Actor = await localGetOrElse(
       `${did}/actor`,
-      async () => await Activities.newActor(did, "Person", key, { name })
+      async () => await Messages.newActor(did, "Person", key, { name })
     );
 
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
@@ -87,7 +92,7 @@ export class ChatterNet {
 
     const servers = [...peerServers, ...defaultServers].slice(0, maxServers);
 
-    const createActor = await Activities.newMessage(did, [actor.id], "Create", null, key);
+    const createActor = await Messages.newMessage(did, [actor.id], "Create", null, key);
 
     for (const server of servers)
       postMessage(createActor, did, server)

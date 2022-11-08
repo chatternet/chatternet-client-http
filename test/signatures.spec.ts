@@ -1,5 +1,5 @@
-import { didFromKey, newKey } from "../src/didkey.js";
-import * as Credentials from "../src/signatures.js";
+import { DidKey } from "../src/index.js";
+import * as Signatures from "../src/signatures.js";
 import * as assert from "assert";
 
 describe("credentials", () => {
@@ -12,8 +12,8 @@ describe("credentials", () => {
       "@context": "https://www.w3.org/ns/activitystreams",
       "https://www.w3.org/ns/activitystreams#content": "abc",
     };
-    const id1 = await Credentials.buildDocCid(doc1);
-    const id2 = await Credentials.buildDocCid(doc2);
+    const id1 = await Signatures.buildDocCid(doc1);
+    const id2 = await Signatures.buildDocCid(doc2);
     assert.ok(id1.equals(id2));
   });
 
@@ -26,14 +26,14 @@ describe("credentials", () => {
       "@context": "https://www.w3.org/ns/activitystreams",
       content: "abcd",
     };
-    const id1 = await Credentials.buildDocCid(doc1);
-    const id2 = await Credentials.buildDocCid(doc2);
+    const id1 = await Signatures.buildDocCid(doc1);
+    const id2 = await Signatures.buildDocCid(doc2);
     assert.ok(!id1.equals(id2));
   });
 
   it("signs and verifies a document", async () => {
-    const key = await newKey();
-    const did = didFromKey(key);
+    const key = await DidKey.newKey();
+    const did = DidKey.didFromKey(key);
     const doc = {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -41,14 +41,14 @@ describe("credentials", () => {
       ],
       content: "abc",
     };
-    const signed = await Credentials.sign(doc, key);
-    const verified = await Credentials.verify(signed, did);
+    const signed = await Signatures.sign(doc, key);
+    const verified = await Signatures.verify(signed, did);
     assert.ok(verified);
   });
 
   it("doesnt verify modified document", async () => {
-    const key = await newKey();
-    const did = didFromKey(key);
+    const key = await DidKey.newKey();
+    const did = DidKey.didFromKey(key);
     const doc = {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -56,14 +56,14 @@ describe("credentials", () => {
       ],
       content: "abc",
     };
-    const signed = await Credentials.sign(doc, key);
+    const signed = await Signatures.sign(doc, key);
     signed.content = "abcd";
-    const verified = await Credentials.verify(signed, did);
+    const verified = await Signatures.verify(signed, did);
     assert.ok(!verified);
   });
 
   it("doesnt sign arbitrary data", async () => {
-    const key = await newKey();
+    const key = await DidKey.newKey();
     const doc = {
       "@context": [
         "https://www.w3.org/ns/activitystreams",
@@ -72,6 +72,6 @@ describe("credentials", () => {
       content: "abc",
       "invalid key": "abc",
     };
-    assert.rejects(Credentials.sign(doc, key));
+    assert.rejects(Signatures.sign(doc, key));
   });
 });

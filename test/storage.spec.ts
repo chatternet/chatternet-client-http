@@ -1,4 +1,4 @@
-import { didFromKey, newKey } from "../src/didkey.js";
+import { DidKey } from "../src/index.js";
 import * as Storage from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
@@ -29,8 +29,8 @@ describe("storage", () => {
     it("puts and gets key pair", async () => {
       const db = await Storage.DbDevice.new();
       await db.clear();
-      const key = await newKey();
-      const did = didFromKey(key);
+      const key = await DidKey.newKey();
+      const did = DidKey.didFromKey(key);
       const password = "abc";
       const salt = await db.idSalt.getPut(did);
       const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
