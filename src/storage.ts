@@ -258,28 +258,20 @@ export class DbDevice {
 export class DbPeer {
   static DEFAULT_NAME = "Peer";
 
-  constructor(
-    readonly db: IDBPDatabase,
-    readonly idNameSuffix: StoreIdNameSuffix,
-    readonly server: StoreServer
-  ) {}
+  constructor(readonly db: IDBPDatabase, readonly server: StoreServer) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
-    let storeNameSuffix = undefined;
     let storeServer = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
-        storeNameSuffix = StoreIdNameSuffix.create(db);
         storeServer = StoreServer.create(db);
       },
     });
-    storeNameSuffix = storeNameSuffix ? storeNameSuffix : new StoreIdNameSuffix(db);
     storeServer = storeServer ? storeServer : new StoreServer(db);
-    return new DbPeer(db, storeNameSuffix, storeServer);
+    return new DbPeer(db, storeServer);
   }
 
   async clear() {
-    await this.idNameSuffix.clear();
     await this.server.clear();
   }
 }

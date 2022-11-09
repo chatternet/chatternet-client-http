@@ -18,13 +18,13 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const key = await DidKey.newKey();
     const did = await ChatterNet.newAccount(key, "some name", "abc");
-    await ChatterNet.new(did, "abc", 2, defaultServers);
+    await ChatterNet.new(did, "abc", defaultServers);
   });
 
   it("doesnt build for wrong password", async () => {
     await ChatterNet.clearDbs();
     const key = await DidKey.newKey();
     const did = await ChatterNet.newAccount(key, "some name", "abc");
-    assert.rejects(() => ChatterNet.new(did, "abcd", 2, []));
+    assert.rejects(() => ChatterNet.new(did, "abcd", []));
   });
 });

@@ -10,12 +10,24 @@ interface Dbs {
   peer: Storage.DbPeer;
 }
 
+interface Server {
+  url: string;
+  lastId: string | undefined;
+  knownIds: Set<string>;
+}
+
+function newServer(url: string): Server {
+  const lastId = undefined;
+  const knownIds: Set<string> = new Set();
+  return { url, lastId, knownIds };
+}
+
 async function postMessage(
   message: Messages.Message,
   did: string,
   server: string
 ): Promise<Response> {
-  const url = new URL(`/did/${did}/actor/outbox`, server);
+  const url = new URL(`/${did}/actor/outbox`, server);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(message),
@@ -24,11 +36,11 @@ async function postMessage(
   return await fetch(request);
 }
 
-async function postActor(actor: Messages.Actor, did: string, server: string): Promise<Response> {
-  const url = new URL(`/did/${did}/actor`, server);
+async function postObjectDoc(objetDoc: Messages.ObjectDoc, server: string): Promise<Response> {
+  const url = new URL(`/${objetDoc.id}`, server);
   const request = new Request(url, {
     method: "POST",
-    body: JSON.stringify(actor),
+    body: JSON.stringify(objetDoc),
     headers: { "Content-Type": "application/json" },
   });
   return await fetch(request);
@@ -43,7 +55,13 @@ async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> 
 }
 
 export class ChatterNet {
-  constructor(readonly dbs: Dbs, readonly servers: string[]) {}
+  constructor(
+    private readonly key: Key,
+    private readonly dbs: Dbs,
+    private readonly servers: Map<string, Server>,
+    private readonly messages: Map<string, Messages.Message> = new Map(),
+    private readonly objectDocs: Map<string, Messages.ObjectDoc> = new Map()
+  ) {}
 
   static async newAccount(key: Key, name: string, password: string): Promise<string> {
     const db = await Storage.DbDevice.new();
@@ -65,12 +83,7 @@ export class ChatterNet {
     await (await Storage.DbPeer.new()).clear();
   }
 
-  static async new(
-    did: string,
-    password: string,
-    maxServers: number,
-    defaultServers: string[]
-  ): Promise<ChatterNet> {
+  static async new(did: string, password: string, defaultServers: string[]): Promise<ChatterNet> {
     const device = await Storage.DbDevice.new();
 
     const salt = await device.idSalt.getPut(did);
@@ -78,28 +91,26 @@ export class ChatterNet {
     const key = await device.keyPair.get(did, cryptoKey);
     if (!key) throw Error(`there is no record for the given DID: ${did}`);
 
-    const nameSuffix = await device.idNameSuffix.get(did);
-    if (!nameSuffix) throw Error(`there is no name for the given DID: ${did}`);
-    const { name } = nameSuffix;
+    const idNameSuffix = await device.idNameSuffix.get(did);
+    if (!idNameSuffix) throw Error(`there is no name for the given DID: ${did}`);
+    const { name } = idNameSuffix;
+
+    const peer = await Storage.DbPeer.new(`Peer_${did}`);
+    const peerServers = await peer.server.getUrlsByLastListen();
+
+    const servers = new Map([...peerServers, ...defaultServers].map((x) => [x, newServer(x)]));
+    const chatternet = new ChatterNet(key, { device, peer }, servers);
 
     const actor: Messages.Actor = await localGetOrElse(
       `${did}/actor`,
       async () => await Messages.newActor(did, "Person", key, { name })
     );
-
-    const peer = await Storage.DbPeer.new(`Peer_${did}`);
-    const peerServers = await peer.server.getUrlsByLastListen();
-
-    const servers = [...peerServers, ...defaultServers].slice(0, maxServers);
-
     const createActor = await Messages.newMessage(did, [actor.id], "Create", null, key);
 
-    for (const server of servers)
-      postMessage(createActor, did, server)
-        .then(() => postActor(actor, did, server))
-        .catch((x) => console.error(x));
-
-    const chatternet = new ChatterNet({ device, peer }, servers);
+    chatternet
+      .processMessage(createActor)
+      .then(() => chatternet.processObjectDoc(actor))
+      .catch((x) => console.error(x));
 
     return chatternet;
   }
@@ -109,8 +120,40 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
+  async processMessage(message: Messages.Message) {
+    if (!message.id) return;
+    if (!Messages.verifyMessage(message)) return;
+    this.messages.set(message.id, message);
+
+    const did = DidKey.didFromKey(this.key);
+
+    for (const { url, knownIds } of this.servers.values()) {
+      try {
+        if (!knownIds.has(message.id)) await postMessage(message, did, url);
+        knownIds.add(message.id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  async processObjectDoc(objectDoc: Messages.ObjectDoc) {
+    if (!objectDoc.id) return;
+    if (!Messages.verifyObjectDoc(objectDoc)) return;
+    this.objectDocs.set(objectDoc.id, objectDoc);
+
+    for (const { url, knownIds } of this.servers.values()) {
+      try {
+        if (!knownIds.has(objectDoc.id)) await postObjectDoc(objectDoc, url);
+        knownIds.add(objectDoc.id);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
   async getIdNameSuffix(did: string, maxLength: number = 8): Promise<IdNameSuffix> {
-    let idNameSuffix = await this.dbs.peer.idNameSuffix.get(did);
+    let idNameSuffix = await this.dbs.device.idNameSuffix.get(did);
     if (idNameSuffix) return idNameSuffix;
     return {
       id: did,

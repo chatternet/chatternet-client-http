@@ -129,3 +129,13 @@ For example, to verify if a new node builds and connects:
 ```bash
 CHATTERNET_TEST_SERVER='http://127.0.0.1:3030' npm run test -- -- -f 'chatter net builds new'
 ```
+
+## TODO
+
+- pin messages to local
+  - when message is added
+  - for messages created by the user
+- transfer key to another device
+- move an account
+- interact with top servers
+  - verify health periodically

@@ -49,19 +49,6 @@ describe("storage", () => {
         name: "name 1",
         suffix: "",
       });
-    });
-  });
-
-  describe("db peer", () => {
-    it("puts and gets name suffix", async () => {
-      const db = await Storage.DbPeer.new();
-      await db.clear();
-      await db.idNameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
-        id: "did:example:a",
-        name: "name 1",
-        suffix: "",
-      });
       await db.idNameSuffix.put("did:example:a", "name 1");
       assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
         id: "did:example:a",
@@ -101,7 +88,9 @@ describe("storage", () => {
         new Set(["did:example:a", "did:example:b", "did:example:c"])
       );
     });
+  });
 
+  describe("db peer", () => {
     it("puts and gets servers", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
