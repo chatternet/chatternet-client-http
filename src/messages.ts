@@ -1,11 +1,15 @@
 import { DateTime, Key, Proof, Uri, buildDocCid, sign, verify } from "./signatures.js";
 import { getIsoDate } from "./utils.js";
-import { omit } from "lodash-es";
+import { has, omit } from "lodash-es";
 
 const CONTEXT_ACTIVITY_STREAMS = "https://www.w3.org/ns/activitystreams";
 const CONTEXT_CREDENTIALS = "https://www.w3.org/2018/credentials/v1";
 
-interface BaseObject {
+export interface WithId {
+  id: string;
+}
+
+interface ObjectBase {
   attachment?: any;
   attributedTo?: any;
   audience?: any;
@@ -34,7 +38,16 @@ interface BaseObject {
   duration?: any;
 }
 
-export interface ObjectDoc extends BaseObject {
+interface ActivityBase extends ObjectBase {
+  actor?: any;
+  object?: any;
+  target?: any;
+  result?: any;
+  origin?: any;
+  instrument?: any;
+}
+
+export interface ObjectDoc extends ObjectBase {
   "@context": string[];
   id?: Uri;
   type: String;
@@ -42,23 +55,32 @@ export interface ObjectDoc extends BaseObject {
 
 export async function newObjectDoc(
   type: string,
-  members?: Omit<BaseObject, "id" | "type">
-): Promise<ObjectDoc> {
+  members?: Omit<ObjectBase, "id" | "type">
+): Promise<ObjectDocWithId> {
   const objectDoc: ObjectDoc = {
     ...members,
     "@context": [CONTEXT_ACTIVITY_STREAMS],
     type,
     ...members,
   };
-  let cid = (await buildDocCid(objectDoc)).toString();
-  objectDoc.id = `urn:cid:${cid}`;
-  return objectDoc;
+  const cid = (await buildDocCid(objectDoc)).toString();
+  const id = `urn:cid:${cid}`;
+  return { ...objectDoc, id };
 }
 
 export async function verifyObjectDoc(objectDoc: ObjectDoc): Promise<boolean> {
   let objectDocForId = omit(objectDoc, ["id"]);
   let cid = (await buildDocCid(objectDocForId)).toString();
   if (`urn:cid:${cid}` !== objectDoc.id) return false;
+  return true;
+}
+
+export type ObjectDocWithId = ObjectDoc & WithId;
+
+export function isObjectDocWithId(message: unknown): message is ObjectDocWithId {
+  if (!has(message, "@context")) return false;
+  if (!has(message, "id")) return false;
+  if (!has(message, "type")) return false;
   return true;
 }
 
@@ -79,7 +101,7 @@ export function newInbox(actorId: string, messages: Message[], after?: string): 
   };
 }
 
-export interface Actor extends BaseObject {
+export interface Actor extends ObjectBase {
   "@context": [string, string];
   id: Uri;
   type: string;
@@ -94,7 +116,7 @@ export async function newActor(
   did: Uri,
   type: string,
   key: Key,
-  members?: Omit<BaseObject, "id" | "type">
+  members?: Omit<ObjectBase, "id" | "type">
 ): Promise<Actor> {
   if (members && !key) throw Error("actor members added without a key");
   const id = `${did}/actor`;
@@ -134,10 +156,10 @@ export async function verifyActor(actor: Actor): Promise<boolean> {
   return true;
 }
 
-export interface Message extends BaseObject {
+export interface Message extends ActivityBase {
   "@context": string[];
   id?: Uri;
-  type: String;
+  type: string;
   actor: Uri;
   object: Uri[];
   published: DateTime;
@@ -150,11 +172,10 @@ export async function newMessage(
   type: string,
   published: DateTime | null,
   key: Key,
-  members?: Omit<BaseObject, "id" | "type" | "actor" | "object" | "published">
-): Promise<Message> {
+  members?: Omit<ActivityBase, "id" | "type" | "actor" | "object" | "published">
+): Promise<MessageWithId> {
   let actor = `${actorDid}/actor`;
   const message: Message = {
-    ...members,
     "@context": [CONTEXT_ACTIVITY_STREAMS, CONTEXT_CREDENTIALS],
     type,
     actor,
@@ -162,9 +183,13 @@ export async function newMessage(
     published: published != null ? published : getIsoDate(),
     ...members,
   };
-  let cid = (await buildDocCid(message)).toString();
-  message.id = `urn:cid:${cid}`;
-  return await sign(message, key);
+  const cid = (await buildDocCid(message)).toString();
+  const id = `urn:cid:${cid}`;
+  const messageWithId = {
+    ...message,
+    id,
+  };
+  return await sign(messageWithId, key);
 }
 
 export async function verifyMessage(message: Message): Promise<boolean> {
@@ -174,5 +199,17 @@ export async function verifyMessage(message: Message): Promise<boolean> {
   let cid = (await buildDocCid(messageForId)).toString();
   if (`urn:cid:${cid}` !== message.id) return false;
   if (!(await verify(message, did))) return false;
+  return true;
+}
+
+export type MessageWithId = Message & WithId;
+
+export function isMessageWithId(message: unknown): message is MessageWithId {
+  if (!has(message, "@context")) return false;
+  if (!has(message, "id")) return false;
+  if (!has(message, "type")) return false;
+  if (!has(message, "actor")) return false;
+  if (!has(message, "object")) return false;
+  if (!has(message, "published")) return false;
   return true;
 }

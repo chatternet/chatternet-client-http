@@ -1,5 +1,6 @@
 import * as DidKey from "./didkey.js";
 import * as Messages from "./messages.js";
+import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
 import type { IdNameSuffix } from "./storage.js";
@@ -8,42 +9,6 @@ import { orDefault } from "./utils.js";
 interface Dbs {
   device: Storage.DbDevice;
   peer: Storage.DbPeer;
-}
-
-interface Server {
-  url: string;
-  lastId: string | undefined;
-  knownIds: Set<string>;
-}
-
-function newServer(url: string): Server {
-  const lastId = undefined;
-  const knownIds: Set<string> = new Set();
-  return { url, lastId, knownIds };
-}
-
-async function postMessage(
-  message: Messages.Message,
-  did: string,
-  server: string
-): Promise<Response> {
-  const url = new URL(`/${did}/actor/outbox`, server);
-  const request = new Request(url, {
-    method: "POST",
-    body: JSON.stringify(message),
-    headers: { "Content-Type": "application/json" },
-  });
-  return await fetch(request);
-}
-
-async function postObjectDoc(objetDoc: Messages.ObjectDoc, server: string): Promise<Response> {
-  const url = new URL(`/${objetDoc.id}`, server);
-  const request = new Request(url, {
-    method: "POST",
-    body: JSON.stringify(objetDoc),
-    headers: { "Content-Type": "application/json" },
-  });
-  return await fetch(request);
 }
 
 async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> {
@@ -57,10 +22,9 @@ async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> 
 export class ChatterNet {
   constructor(
     private readonly key: Key,
+    private readonly name: string,
     private readonly dbs: Dbs,
-    private readonly servers: Map<string, Server>,
-    private readonly messages: Map<string, Messages.Message> = new Map(),
-    private readonly objectDocs: Map<string, Messages.ObjectDoc> = new Map()
+    private readonly servers: Servers
   ) {}
 
   static async newAccount(key: Key, name: string, password: string): Promise<string> {
@@ -98,19 +62,8 @@ export class ChatterNet {
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
     const peerServers = await peer.server.getUrlsByLastListen();
 
-    const servers = new Map([...peerServers, ...defaultServers].map((x) => [x, newServer(x)]));
-    const chatternet = new ChatterNet(key, { device, peer }, servers);
-
-    const actor: Messages.Actor = await localGetOrElse(
-      `${did}/actor`,
-      async () => await Messages.newActor(did, "Person", key, { name })
-    );
-    const createActor = await Messages.newMessage(did, [actor.id], "Create", null, key);
-
-    chatternet
-      .processMessage(createActor)
-      .then(() => chatternet.processObjectDoc(actor))
-      .catch((x) => console.error(x));
+    const servers = Servers.fromUrls([...peerServers, ...defaultServers]);
+    const chatternet = new ChatterNet(key, name, { device, peer }, servers);
 
     return chatternet;
   }
@@ -120,36 +73,40 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
-  async processMessage(message: Messages.Message) {
-    if (!message.id) return;
-    if (!Messages.verifyMessage(message)) return;
-    this.messages.set(message.id, message);
-
+  /**
+   * Build the create person message and send to servers.
+   * @param name name of account to post to servers
+   */
+  async buildContext() {
     const did = DidKey.didFromKey(this.key);
-
-    for (const { url, knownIds } of this.servers.values()) {
-      try {
-        if (!knownIds.has(message.id)) await postMessage(message, did, url);
-        knownIds.add(message.id);
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    const actor: Messages.Actor = await localGetOrElse(
+      `${did}/actor`,
+      async () => await Messages.newActor(did, "Person", this.key, { name: this.name })
+    );
+    const createActor = await Messages.newMessage(did, [actor.id], "Create", null, this.key);
+    this.servers
+      .postMessage(createActor, did)
+      .then(() => this.servers.postObjectDoc(actor))
+      .catch((x) => console.error(x));
   }
 
-  async processObjectDoc(objectDoc: Messages.ObjectDoc) {
-    if (!objectDoc.id) return;
-    if (!Messages.verifyObjectDoc(objectDoc)) return;
-    this.objectDocs.set(objectDoc.id, objectDoc);
+  /**
+   * Post a view message indicating that an object has been viewed.
+   * @param message the message whose object is viewed
+   */
+  async viewMessage(message: Messages.MessageWithId) {
+    // don't view indirect messages
+    if (message.origin) return;
+    const did = DidKey.didFromKey(this.key);
+    const view = await Messages.newMessage(did, message.object, "View", null, this.key, {
+      origin: message.id,
+    });
+    this.servers.postMessage(view, did).catch((x) => console.error(x));
+    return true;
+  }
 
-    for (const { url, knownIds } of this.servers.values()) {
-      try {
-        if (!knownIds.has(objectDoc.id)) await postObjectDoc(objectDoc, url);
-        knownIds.add(objectDoc.id);
-      } catch (err) {
-        console.error(err);
-      }
-    }
+  getName(): string {
+    return this.name;
   }
 
   async getIdNameSuffix(did: string, maxLength: number = 8): Promise<IdNameSuffix> {

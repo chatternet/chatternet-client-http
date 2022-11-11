@@ -1,4 +1,5 @@
 import { DidKey, Messages } from "../src/index.js";
+import { isMessageWithId, isObjectDocWithId } from "../src/messages.js";
 import { sign } from "../src/signatures.js";
 import * as assert from "assert";
 import { omit } from "lodash-es";
@@ -16,6 +17,18 @@ describe("activities", () => {
     assert.ok(!Messages.didFromActorId(`${did}/other`));
     assert.ok(!Messages.didFromActorId(`${did}`));
     assert.ok(!Messages.didFromActorId(`a:b/actor`));
+  });
+
+  it("guards object doc with id", async () => {
+    const objectDoc = {
+      "@context": ["a:b"],
+      id: "a:b",
+      type: "abc",
+    };
+    assert.ok(isObjectDocWithId(objectDoc));
+    assert.ok(!isObjectDocWithId(omit(objectDoc, "@context")));
+    assert.ok(!isObjectDocWithId(omit(objectDoc, "id")));
+    assert.ok(!isObjectDocWithId(omit(objectDoc, "type")));
   });
 
   it("builds and verifies an object with invalid ID", async () => {
@@ -93,5 +106,23 @@ describe("activities", () => {
     });
     let invalid = await sign({ ...omit(message, "proof"), id: "urn:cid:a" }, jwk);
     assert.ok(!(await Messages.verifyMessage(invalid)));
+  });
+
+  it("guards message with id", async () => {
+    const message = {
+      "@context": ["a:b"],
+      id: "a:b",
+      type: "abc",
+      actor: "a:b",
+      object: ["a:b"],
+      published: "2000-01-01T00:00:00Z",
+    };
+    assert.ok(isMessageWithId(message));
+    assert.ok(!isMessageWithId(omit(message, "@context")));
+    assert.ok(!isMessageWithId(omit(message, "id")));
+    assert.ok(!isMessageWithId(omit(message, "type")));
+    assert.ok(!isMessageWithId(omit(message, "actor")));
+    assert.ok(!isMessageWithId(omit(message, "object")));
+    assert.ok(!isMessageWithId(omit(message, "published")));
   });
 });

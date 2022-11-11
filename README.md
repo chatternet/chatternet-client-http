@@ -139,3 +139,23 @@ CHATTERNET_TEST_SERVER='http://127.0.0.1:3030' npm run test -- -- -f 'chatter ne
 - move an account
 - interact with top servers
   - verify health periodically
+
+### State
+
+- Chatter Net
+  - Manages local state derived from messages as pertains to local person
+  - Names of other persons
+  - Views of messages
+  - Follows of other persons
+- Servers:
+  - Manages cache state to facilitate communication with and among servers
+  - Responsible for relaying messages and objects to other servers
+  - NOTE: relay a single message, then its objects
+- Message list:
+  - Manages per-view state for a list of messages to display
+  - Builds from servers inboxes
+  - Tracks cursor into severs
+  - Can extend list
+  - Collects resources required to display messages
+    - source message
+    - objects
