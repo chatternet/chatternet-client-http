@@ -1,4 +1,5 @@
 import * as DidKey from "./didkey.js";
+import { MessageIter } from "./messageiter.js";
 import * as Messages from "./messages.js";
 import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
@@ -73,13 +74,16 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
+  async buildMessageIter(): Promise<MessageIter> {
+    return await MessageIter.new(this.getDid(), this.servers);
+  }
+
   async postMessages(message: Messages.MessageWithId) {
-    const did = DidKey.didFromKey(this.key);
-    this.servers.postMessage(message, did);
+    this.servers.postMessage(message, this.getDid());
   }
 
   async createActor(): Promise<Messages.MessageWithId> {
-    const did = DidKey.didFromKey(this.key);
+    const did = this.getDid();
     const actor: Messages.Actor = await localGetOrElse(
       `${did}/actor`,
       async () => await Messages.newActor(did, "Person", this.key, { name: this.name })
@@ -96,6 +100,10 @@ export class ChatterNet {
       origin: message.id,
     });
     return view;
+  }
+
+  getDid(): string {
+    return DidKey.didFromKey(this.key);
   }
 
   getName(): string {
