@@ -7,16 +7,6 @@ import "fake-indexeddb/auto";
 if (!global.window) global.window = { crypto: globalThis.crypto };
 
 describe("storage", () => {
-  it("builds suffix", () => {
-    assert.equal(Storage.buildSuffix("abc", []), "");
-    assert.equal(Storage.buildSuffix("abc", [], 1), "a");
-    assert.equal(Storage.buildSuffix("abc", [], 2), "ab");
-    assert.equal(Storage.buildSuffix("abc", [""]), "a");
-    assert.equal(Storage.buildSuffix("abc", ["", "a"]), "ab");
-    assert.equal(Storage.buildSuffix("abc", ["", "a", "ab"]), "abc");
-    assert.equal(Storage.buildSuffix("abc", ["", "a", "ab", "abc"]), "abc");
-  });
-
   describe("db device", () => {
     it("puts and gets id salt", async () => {
       const db = await Storage.DbDevice.new();
@@ -40,53 +30,19 @@ describe("storage", () => {
       assert.deepEqual(back.fingerprint(), key.fingerprint());
     });
 
-    it("puts and gets name suffix", async () => {
+    it("puts and gets name", async () => {
       const db = await Storage.DbDevice.new();
       await db.clear();
-      await db.idNameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
+      await db.idName.put("did:example:a", "name 1");
+      assert.deepEqual(await db.idName.get("did:example:a"), {
         id: "did:example:a",
         name: "name 1",
-        suffix: "",
       });
-      await db.idNameSuffix.put("did:example:a", "name 1");
-      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
-        id: "did:example:a",
-        name: "name 1",
-        suffix: "",
-      });
-      assert.ok(!(await db.idNameSuffix.get("did:example:b")));
-      await db.idNameSuffix.put("did:example:b", "name 2");
-      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
-        id: "did:example:a",
-        name: "name 1",
-        suffix: "",
-      });
-      assert.deepEqual(await db.idNameSuffix.get("did:example:b"), {
+      await db.idName.put("did:example:b", "name 2");
+      assert.deepEqual(await db.idName.get("did:example:b"), {
         id: "did:example:b",
         name: "name 2",
-        suffix: "",
       });
-      await db.idNameSuffix.put("did:example:c", "name 2");
-      assert.deepEqual(await db.idNameSuffix.get("did:example:a"), {
-        id: "did:example:a",
-        name: "name 1",
-        suffix: "",
-      });
-      assert.deepEqual(await db.idNameSuffix.get("did:example:b"), {
-        id: "did:example:b",
-        name: "name 2",
-        suffix: "",
-      });
-      assert.deepEqual(await db.idNameSuffix.get("did:example:c"), {
-        id: "did:example:c",
-        name: "name 2",
-        suffix: "c",
-      });
-      assert.deepEqual(
-        new Set((await db.idNameSuffix.getAll()).map((x) => x.id)),
-        new Set(["did:example:a", "did:example:b", "did:example:c"])
-      );
     });
   });
 
