@@ -74,10 +74,6 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
-  async buildMessageIter(): Promise<MessageIter> {
-    return await MessageIter.new(this.getDid(), this.servers);
-  }
-
   async postMessages(message: Messages.MessageWithId) {
     this.servers.postMessage(message, this.getDid());
   }
@@ -112,5 +108,13 @@ export class ChatterNet {
 
   async getIdName(did: string): Promise<IdName | undefined> {
     return await this.dbs.device.idName.get(did);
+  }
+
+  async getObjectDoc(id: string): Promise<Messages.ObjectDocWithId | undefined> {
+    return await this.servers.getObjectDoc(id);
+  }
+
+  async buildMessageIter(): Promise<MessageIter> {
+    return await MessageIter.new(this.getDid(), this.servers);
   }
 }
