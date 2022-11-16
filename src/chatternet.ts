@@ -20,6 +20,11 @@ async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> 
   return value;
 }
 
+export interface MessageObjectDoc {
+  message: Messages.MessageWithId;
+  objectDoc: Messages.ObjectDocWithId;
+}
+
 export class ChatterNet {
   constructor(
     private readonly key: Key,
@@ -74,18 +79,39 @@ export class ChatterNet {
     this.dbs.device.db.close();
   }
 
-  async postMessages(message: Messages.MessageWithId) {
-    this.servers.postMessage(message, this.getDid());
+  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
+    this.servers
+      .postMessage(messageObjectDoc.message, this.getDid())
+      .then(() => this.servers.postObjectDoc(messageObjectDoc.objectDoc))
+      .catch((x) => console.error(x));
   }
 
-  async createActor(): Promise<Messages.MessageWithId> {
+  async newNote(content: string): Promise<MessageObjectDoc> {
+    const objectDoc = await Messages.newObjectDoc("Note", { content });
+    const message = await Messages.newMessage(
+      this.getDid(),
+      [objectDoc.id],
+      "Create",
+      null,
+      this.key
+    );
+    return {
+      message,
+      objectDoc,
+    };
+  }
+
+  async newActor(): Promise<MessageObjectDoc> {
     const did = this.getDid();
-    const actor: Messages.Actor = await localGetOrElse(
+    const objectDoc: Messages.Actor = await localGetOrElse(
       `${did}/actor`,
       async () => await Messages.newActor(did, "Person", this.key, { name: this.name })
     );
-    const createActor = await Messages.newMessage(did, [actor.id], "Create", null, this.key);
-    return createActor;
+    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key);
+    return {
+      message,
+      objectDoc,
+    };
   }
 
   async viewMessage(message: Messages.MessageWithId): Promise<Messages.MessageWithId | undefined> {
