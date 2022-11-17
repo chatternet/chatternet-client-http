@@ -22,7 +22,7 @@ async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> 
 
 export interface MessageObjectDoc {
   message: Messages.MessageWithId;
-  objectDoc: Messages.ObjectDocWithId;
+  objectDoc?: Messages.ObjectDocWithId;
 }
 
 export class ChatterNet {
@@ -82,36 +82,42 @@ export class ChatterNet {
   async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
     this.servers
       .postMessage(messageObjectDoc.message, this.getDid())
-      .then(() => this.servers.postObjectDoc(messageObjectDoc.objectDoc))
+      .then(() =>
+        messageObjectDoc.objectDoc ? this.servers.postObjectDoc(messageObjectDoc.objectDoc) : null
+      )
       .catch((x) => console.error(x));
   }
 
-  async newNote(content: string): Promise<MessageObjectDoc> {
+  async newNote(content: string, audience?: string[]): Promise<MessageObjectDoc> {
+    const did = this.getDid();
+    audience = audience ? audience : [`${did}/actor/followers`];
     const objectDoc = await Messages.newObjectDoc("Note", { content });
-    const message = await Messages.newMessage(
-      this.getDid(),
-      [objectDoc.id],
-      "Create",
-      null,
-      this.key
-    );
-    return {
-      message,
-      objectDoc,
-    };
+    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key, {
+      audience,
+    });
+    return { message, objectDoc };
   }
 
   async newActor(): Promise<MessageObjectDoc> {
     const did = this.getDid();
+    const audience = [`${did}/actor/followers`];
     const objectDoc: Messages.Actor = await localGetOrElse(
       `${did}/actor`,
       async () => await Messages.newActor(did, "Person", this.key, { name: this.name })
     );
-    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key);
-    return {
-      message,
-      objectDoc,
-    };
+    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key, {
+      audience,
+    });
+    return { message, objectDoc };
+  }
+
+  async newFollow(actorId: string, audience?: string[]): Promise<MessageObjectDoc> {
+    const did = this.getDid();
+    audience = audience ? audience : [`${did}/actor/followers`, `${actorId}/followers`];
+    const message = await Messages.newMessage(did, [actorId], "Follow", null, this.key, {
+      audience,
+    });
+    return { message };
   }
 
   async viewMessage(message: Messages.MessageWithId): Promise<Messages.MessageWithId | undefined> {
