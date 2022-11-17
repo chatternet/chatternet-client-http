@@ -94,14 +94,16 @@ export class Servers {
       const objectDoc: unknown = await response.json();
       if (!Messages.isObjectDocWithId(objectDoc)) continue;
       server.knownIds.add(objectDoc.id);
+      if (!(await Messages.verifyObjectDoc(objectDoc))) continue;
       return objectDoc;
     }
   }
 
   async getActor(id: string): Promise<Messages.Actor | undefined> {
-    const objectDoc = await this.getObjectDoc(id);
-    if (!Messages.isActor(objectDoc)) return;
-    return objectDoc;
+    const actor = await this.getObjectDoc(id);
+    if (!Messages.isActor(actor)) return;
+    if (!(await Messages.verifyActor(actor))) return;
+    return actor;
   }
 
   async getInbox(url: string, did: string, after?: string): Promise<Messages.MessageWithId[]> {
@@ -115,6 +117,9 @@ export class Servers {
     const messagesWithId = messages.filter(Messages.isMessageWithId);
     // side effects
     for (const message of messagesWithId) server.knownIds.add(message.id);
-    return messages;
+    const messagesValid: Messages.MessageWithId[] = [];
+    for (const message of messagesWithId)
+      if (await Messages.verifyMessage(message)) messagesValid.push(message);
+    return messagesValid;
   }
 }

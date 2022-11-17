@@ -52,6 +52,22 @@ describe("servers", () => {
     ]);
   });
 
+  it("gets an object", async () => {
+    resetFetch();
+    const urls = ["http://a.example"];
+    const objectDoc = await Messages.newObjectDoc("Note");
+    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input as Request;
+      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
+        return new Response(JSON.stringify(objectDoc));
+      return new Response(null, { status: 500 });
+    };
+    const servers = await Servers.fromUrls(urls);
+
+    const returnedObjectDoc = await servers.getObjectDoc(objectDoc.id);
+    assert.deepEqual(returnedObjectDoc, objectDoc);
+  });
+
   it("get object from server that already had it", async () => {
     resetFetch();
     const urls = ["http://a.example", "http://b.example"];
@@ -59,44 +75,85 @@ describe("servers", () => {
     const objectDoc = await Messages.newObjectDoc("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (request.method != "GET") return new Response(null, { status: 500 });
       requestedUrls.push(request.url.toString());
-      if (request.url.toString() === `http://b.example/${objectDoc.id}`)
+      if (request.method === "GET" && request.url.toString() === `http://b.example/${objectDoc.id}`)
         return new Response(JSON.stringify(objectDoc));
-      if (request.url.toString() === `http://a.example/${objectDoc.id}`)
+      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
         return new Response(null, { status: 404 });
       return new Response(null, { status: 500 });
     };
     const servers = await Servers.fromUrls(urls);
-
-    const returnedObjectDoc1 = await servers.getObjectDoc(objectDoc.id);
-    assert.deepEqual(returnedObjectDoc1, objectDoc);
+    // tries both URLs before finding the object
+    await servers.getObjectDoc(objectDoc.id);
     assert.deepEqual(requestedUrls, [
       `http://a.example/${objectDoc.id}`,
       `http://b.example/${objectDoc.id}`,
     ]);
-
+    // directly asks b since it knows it has the object
     requestedUrls = [];
-    const returnedObjectDoc2 = await servers.getObjectDoc(objectDoc.id);
-    assert.deepEqual(returnedObjectDoc2, objectDoc);
+    await servers.getObjectDoc(objectDoc.id);
     assert.deepEqual(requestedUrls, [`http://b.example/${objectDoc.id}`]);
   });
 
-  it("get inbox", async () => {
+  it("doesnt get invalid object", async () => {
+    resetFetch();
+    const urls = ["http://a.example"];
+    const objectDoc = await Messages.newObjectDoc("Note");
+    // invalidates the object
+    objectDoc.id = "urn:cid:abc";
+    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input as Request;
+      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
+        return new Response(JSON.stringify(objectDoc));
+      return new Response(null, { status: 500 });
+    };
+    const servers = await Servers.fromUrls(urls);
+
+    const returnedObjectDoc = await servers.getObjectDoc(objectDoc.id);
+    assert.ok(!returnedObjectDoc);
+  });
+
+  it("gets inbox messages", async () => {
     resetFetch();
     const key = await DidKey.newKey();
     const did = DidKey.didFromKey(key);
-    const urls = ["http://a.example", "http://b.example"];
-    const message = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    const urls = ["http://a.example"];
+    const message1 = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    const message2 = await Messages.newMessage(did, ["urn:cid:b"], "Create", null, key);
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (request.method != "GET") return new Response(null, { status: 500 });
-      if (request.url.toString() === `http://a.example/${did}/actor/inbox`)
-        return new Response(JSON.stringify({ orderedItems: [message] }));
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/${did}/actor/inbox`
+      )
+        return new Response(JSON.stringify({ orderedItems: [message1, message2] }));
       return new Response(null, { status: 500 });
     };
     const servers = await Servers.fromUrls(urls);
     const returnedMessages = await servers.getInbox("http://a.example", did);
-    assert.equal(message.id, returnedMessages[0].id);
+    assert.equal(message1.id, returnedMessages[0].id);
+    assert.equal(message2.id, returnedMessages[1].id);
+  });
+
+  it("doesnt get inbox invalid messages", async () => {
+    resetFetch();
+    const key = await DidKey.newKey();
+    const did = DidKey.didFromKey(key);
+    const urls = ["http://a.example"];
+    const message1 = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    message1.id = "urn:cid:abc";
+    const message2 = await Messages.newMessage(did, ["urn:cid:b"], "Create", null, key);
+    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input as Request;
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/${did}/actor/inbox`
+      )
+        return new Response(JSON.stringify({ orderedItems: [message1, message2] }));
+      return new Response(null, { status: 500 });
+    };
+    const servers = await Servers.fromUrls(urls);
+    const returnedMessages = await servers.getInbox("http://a.example", did);
+    assert.equal(message2.id, returnedMessages[0].id);
   });
 });
