@@ -98,6 +98,12 @@ export class Servers {
     }
   }
 
+  async getActor(id: string): Promise<Messages.Actor | undefined> {
+    const objectDoc = await this.getObjectDoc(id);
+    if (!Messages.isActor(objectDoc)) return;
+    return objectDoc;
+  }
+
   async getInbox(url: string, did: string, after?: string): Promise<Messages.MessageWithId[]> {
     const server = this.urlsServer.get(url);
     if (!server) throw Error("server URL is not known");

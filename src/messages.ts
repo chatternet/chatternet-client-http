@@ -145,6 +145,17 @@ export function didFromActorId(actorId: string): string | undefined {
   return did;
 }
 
+export function isActor(message: unknown): message is Actor {
+  if (!has(message, "@context")) return false;
+  if (!has(message, "id")) return false;
+  if (!has(message, "type")) return false;
+  if (!has(message, "inbox")) return false;
+  if (!has(message, "outbox")) return false;
+  if (!has(message, "following")) return false;
+  if (!has(message, "followers")) return false;
+  return true;
+}
+
 export async function verifyActor(actor: Actor): Promise<boolean> {
   const did = didFromActorId(actor.id);
   if (!did) return false;

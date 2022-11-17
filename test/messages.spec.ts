@@ -1,10 +1,10 @@
 import { DidKey, Messages } from "../src/index.js";
-import { isMessageWithId, isObjectDocWithId } from "../src/messages.js";
+import { isActor, isMessageWithId, isObjectDocWithId } from "../src/messages.js";
 import { sign } from "../src/signatures.js";
 import * as assert from "assert";
 import { omit } from "lodash-es";
 
-describe("activities", () => {
+describe("messages", () => {
   const did = "did:key:z6MkqesEr2GVFXc3qWZi9PzMqtvMMyR5gB3P3R5GTsB7YTRC";
 
   it("builds did from actor id", async () => {
@@ -55,6 +55,26 @@ describe("activities", () => {
     assert.ok(await Messages.verifyActor(actor));
     assert.ok(actor.id.startsWith(did));
     assert.equal(actor.name, "abc");
+  });
+
+  it("guards actor", async () => {
+    const actor = {
+      "@context": ["a:b"],
+      id: "a:b",
+      type: "Actor",
+      inbox: "abc",
+      outbox: "abc",
+      followers: "abc",
+      following: "abc",
+    };
+    assert.ok(isActor(actor));
+    assert.ok(!isActor(omit(actor, "@context")));
+    assert.ok(!isActor(omit(actor, "id")));
+    assert.ok(!isActor(omit(actor, "type")));
+    assert.ok(!isActor(omit(actor, "inbox")));
+    assert.ok(!isActor(omit(actor, "outbox")));
+    assert.ok(!isActor(omit(actor, "followers")));
+    assert.ok(!isActor(omit(actor, "following")));
   });
 
   it("doesnt verify invalid actor", async () => {

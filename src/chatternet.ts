@@ -130,16 +130,16 @@ export class ChatterNet {
     return view;
   }
 
+  async getActor(id: string): Promise<Messages.Actor | undefined> {
+    return await this.servers.getActor(id);
+  }
+
   getDid(): string {
     return DidKey.didFromKey(this.key);
   }
 
   getName(): string {
     return this.name;
-  }
-
-  async getIdName(did: string): Promise<IdName | undefined> {
-    return await this.dbs.device.idName.get(did);
   }
 
   async getObjectDoc(id: string): Promise<Messages.ObjectDocWithId | undefined> {
