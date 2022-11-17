@@ -77,7 +77,10 @@ export class Servers {
     }
   }
 
-  async getObjectDoc(id: string): Promise<Messages.ObjectDocWithId | undefined> {
+  async getObjectDoc(
+    id: string,
+    validate: boolean = true
+  ): Promise<Messages.ObjectDocWithId | undefined> {
     // want to iterate starting with most likely to have doc
     const servers = [...this.urlsServer.values()];
     servers.sort((a, b) => {
@@ -94,13 +97,13 @@ export class Servers {
       const objectDoc: unknown = await response.json();
       if (!Messages.isObjectDocWithId(objectDoc)) continue;
       server.knownIds.add(objectDoc.id);
-      if (!(await Messages.verifyObjectDoc(objectDoc))) continue;
+      if (validate && !(await Messages.verifyObjectDoc(objectDoc))) continue;
       return objectDoc;
     }
   }
 
   async getActor(id: string): Promise<Messages.Actor | undefined> {
-    const actor = await this.getObjectDoc(id);
+    const actor = await this.getObjectDoc(id, false);
     if (!Messages.isActor(actor)) return;
     if (!(await Messages.verifyActor(actor))) return;
     return actor;
