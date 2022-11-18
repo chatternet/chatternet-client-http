@@ -5,19 +5,10 @@ import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
 import type { IdName } from "./storage.js";
-import { orDefault } from "./utils.js";
 
 interface Dbs {
   device: Storage.DbDevice;
   peer: Storage.DbPeer;
-}
-
-async function localGetOrElse<T>(key: string, or: () => Promise<T>): Promise<T> {
-  let value: T | null = JSON.parse(orDefault(window.localStorage.getItem(key), "null"));
-  if (value != null) return value;
-  value = await or();
-  window.localStorage.setItem(key, JSON.stringify(value));
-  return value;
 }
 
 export interface MessageObjectDoc {
@@ -63,10 +54,10 @@ export class ChatterNet {
     const salt = await device.idSalt.getPut(did);
     const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
     const key = await device.keyPair.get(did, cryptoKey);
-    if (!key) throw Error(`there is no record for the given DID: ${did}`);
+    if (!key) throw Error("DID, password combination is incorrect.");
 
     const idNameSuffix = await device.idName.get(did);
-    if (!idNameSuffix) throw Error(`there is no name for the given DID: ${did}`);
+    if (!idNameSuffix) throw Error("there is no name for the given DID");
     const { name } = idNameSuffix;
 
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
@@ -121,10 +112,8 @@ export class ChatterNet {
   async newActor(): Promise<MessageObjectDoc> {
     const did = this.getDid();
     const audience = [`${did}/actor/followers`];
-    const objectDoc: Messages.Actor = await localGetOrElse(
-      `${did}/actor`,
-      async () => await Messages.newActor(did, "Person", this.key, { name: this.name })
-    );
+    const name = this.getName();
+    const objectDoc = await Messages.newActor(did, "Person", this.key, { name });
     const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key, {
       audience,
     });
