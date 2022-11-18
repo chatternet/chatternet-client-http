@@ -198,6 +198,41 @@ class StoreServer {
   }
 }
 
+interface RecordFollow {
+  id: string;
+}
+
+class StoreFollow {
+  static DEFAULT_NAME = "Follow";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreFollow.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreFollow.DEFAULT_NAME) {
+    db.createObjectStore(name, { keyPath: "id" });
+    return new StoreFollow(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async put(id: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const record: RecordFollow = { id };
+    await transaction.store.put(record);
+  }
+
+  async get(url: string): Promise<RecordFollow | undefined> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return await transaction.store.get(url);
+  }
+
+  async getAll(): Promise<string[]> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return (await transaction.store.getAll()).map((x) => x.id);
+  }
+}
+
 export class DbDevice {
   static DEFAULT_NAME = "Device";
 
@@ -235,20 +270,28 @@ export class DbDevice {
 export class DbPeer {
   static DEFAULT_NAME = "Peer";
 
-  constructor(readonly db: IDBPDatabase, readonly server: StoreServer) {}
+  constructor(
+    readonly db: IDBPDatabase,
+    readonly server: StoreServer,
+    readonly follow: StoreFollow
+  ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
     let storeServer = undefined;
+    let storeFollow = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
+        storeFollow = StoreFollow.create(db);
       },
     });
     storeServer = storeServer ? storeServer : new StoreServer(db);
-    return new DbPeer(db, storeServer);
+    storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
+    return new DbPeer(db, storeServer, storeFollow);
   }
 
   async clear() {
     await this.server.clear();
+    await this.follow.clear();
   }
 }

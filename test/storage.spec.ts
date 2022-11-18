@@ -71,5 +71,14 @@ describe("storage", () => {
         "https://a.example.com",
       ]);
     });
+
+    it("puts and gets follow", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      await db.follow.put("did:example:a");
+      await db.follow.put("did:example:a");
+      await db.follow.put("did:example:b");
+      assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:b"]);
+    });
   });
 });
