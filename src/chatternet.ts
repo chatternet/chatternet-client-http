@@ -109,17 +109,6 @@ export class ChatterNet {
     return { message, objectDoc };
   }
 
-  async newActor(): Promise<MessageObjectDoc> {
-    const did = this.getDid();
-    const audience = [`${did}/actor/followers`];
-    const name = this.getName();
-    const objectDoc = await Messages.newActor(did, "Person", this.key, { name });
-    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key, {
-      audience,
-    });
-    return { message, objectDoc };
-  }
-
   async newFollow(actorId: string, audience?: string[]): Promise<MessageObjectDoc> {
     await this.dbs.peer.follow.put(actorId);
     const did = this.getDid();
@@ -130,7 +119,7 @@ export class ChatterNet {
     return { message };
   }
 
-  async viewMessage(message: Messages.MessageWithId): Promise<Messages.MessageWithId | undefined> {
+  async newView(message: Messages.MessageWithId): Promise<Messages.MessageWithId | undefined> {
     // don't view indirect messages
     if (message.origin) return;
     const did = DidKey.didFromKey(this.key);
@@ -138,6 +127,21 @@ export class ChatterNet {
       origin: message.id,
     });
     return view;
+  }
+
+  async getActorMessage(): Promise<MessageObjectDoc> {
+    const did = this.getDid();
+    const name = this.getName();
+    const objectDoc = await Messages.newActor(did, "Person", this.key, { name });
+    const message = await Messages.newMessage(did, [objectDoc.id], "Create", null, this.key);
+    return { message, objectDoc };
+  }
+
+  async getFollowsMessage(): Promise<MessageObjectDoc> {
+    const followSelf = `${this.getDid()}/actor`
+    const follows = [...new Set([...await this.dbs.peer.follow.getAll(), followSelf])];
+    const message = await Messages.newMessage(this.getDid(), follows, "Follow", null, this.key);
+    return { message };
   }
 
   async getActor(id: string): Promise<Messages.Actor | undefined> {
