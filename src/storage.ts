@@ -102,13 +102,18 @@ class StoreKeyPair {
     const transaction = this.db.transaction(this.name, "readonly");
     const record: RecordKeyPair | undefined = await transaction.store.get(did);
     if (!record) return;
-    const plaintext = await window.crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: record.iv },
-      cryptoKey,
-      record.ciphertext
-    );
-    const exported = JSON.parse(new TextDecoder().decode(plaintext));
-    return await Ed25519VerificationKey2020.from(exported);
+    try {
+      const plaintext = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: record.iv },
+        cryptoKey,
+        record.ciphertext
+      );
+      const exported = JSON.parse(new TextDecoder().decode(plaintext));
+      const key = await Ed25519VerificationKey2020.from(exported);
+      return key;
+    } catch {
+      return undefined;
+    }
   }
 }
 

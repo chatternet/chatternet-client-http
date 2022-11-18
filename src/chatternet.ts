@@ -26,12 +26,16 @@ export interface MessageObjectDoc {
 }
 
 export class ChatterNet {
+  private name: string;
+
   constructor(
+    name: string,
     private readonly key: Key,
-    private readonly name: string,
     private readonly dbs: Dbs,
     private readonly servers: Servers
-  ) {}
+  ) {
+    this.name = name;
+  }
 
   static async newAccount(key: Key, name: string, password: string): Promise<string> {
     const db = await Storage.DbDevice.new();
@@ -69,7 +73,7 @@ export class ChatterNet {
     const peerServers = await peer.server.getUrlsByLastListen();
 
     const servers = Servers.fromUrls([...peerServers, ...defaultServers]);
-    const chatternet = new ChatterNet(key, name, { device, peer }, servers);
+    const chatternet = new ChatterNet(name, key, { device, peer }, servers);
 
     return chatternet;
   }
@@ -77,6 +81,22 @@ export class ChatterNet {
   stop() {
     this.dbs.peer.db.close();
     this.dbs.device.db.close();
+  }
+
+  async changeName(name: string) {
+    this.name = name;
+    await this.dbs.device.idName.put(this.getDid(), name);
+  }
+
+  async changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
+    const did = this.getDid();
+    const salt = await this.dbs.device.idSalt.getPut(did);
+    const oldCryptoKey = await Storage.cryptoKeyFromPassword(oldPassword, salt);
+    const confirmKey = await this.dbs.device.keyPair.get(did, oldCryptoKey);
+    if (confirmKey?.fingerprint() !== this.key.fingerprint()) return false;
+    const newCryptoKey = await Storage.cryptoKeyFromPassword(newPassword, salt);
+    await this.dbs.device.keyPair.put(this.key, newCryptoKey);
+    return true;
   }
 
   async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
