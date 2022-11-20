@@ -194,22 +194,23 @@ export async function newMessage(
     published: published != null ? published : getIsoDate(),
     ...members,
   };
-  const cid = (await buildDocCid(message)).toString();
+  const messageWithProof = await sign(message, key);
+  const cid = (await buildDocCid(messageWithProof)).toString();
   const id = `urn:cid:${cid}`;
-  const messageWithId = {
-    ...message,
+  return {
+    ...messageWithProof,
     id,
   };
-  return await sign(messageWithId, key);
 }
 
 export async function verifyMessage(message: Message): Promise<boolean> {
   const did = didFromActorId(message.actor);
   if (!did) return false;
-  let messageForId = omit(message, ["id", "proof"]);
-  let cid = (await buildDocCid(messageForId)).toString();
-  if (`urn:cid:${cid}` !== message.id) return false;
-  if (!(await verify(message, did))) return false;
+  const id = message.id;
+  let messageNoId = omit(message, ["id"]);
+  let cid = (await buildDocCid(messageNoId)).toString();
+  if (`urn:cid:${cid}` !== id) return false;
+  if (!(await verify(messageNoId, did))) return false;
   return true;
 }
 
