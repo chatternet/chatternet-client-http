@@ -45,7 +45,7 @@ describe("messages", () => {
     const message = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, jwk);
     const inbox = Messages.newInbox("did:example:a/actor", [message], "urn:cid:a");
     assert.equal(inbox.id, "did:example:a/actor/inbox?after=urn:cid:a");
-    assert.equal(inbox.orderedItems[0].id, message.id);
+    assert.equal(inbox.items[0].id, message.id);
   });
 
   it("builds and verifies an actor", async () => {

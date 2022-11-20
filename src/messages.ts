@@ -88,7 +88,7 @@ export interface Inbox {
   "@context": string[];
   id: Uri;
   type: "OrderedCollection";
-  orderedItems: Message[];
+  items: Message[];
 }
 
 export function newInbox(actorId: string, messages: Message[], after?: string): Inbox {
@@ -97,7 +97,7 @@ export function newInbox(actorId: string, messages: Message[], after?: string): 
     "@context": [CONTEXT_ACTIVITY_STREAMS],
     id,
     type: "OrderedCollection",
-    orderedItems: messages,
+    items: messages,
   };
 }
 

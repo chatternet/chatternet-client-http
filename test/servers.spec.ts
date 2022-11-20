@@ -189,7 +189,7 @@ describe("servers", () => {
         request.method === "GET" &&
         request.url.toString() === `http://a.example/${did}/actor/inbox`
       )
-        return new Response(JSON.stringify({ orderedItems: [message1, message2] }));
+        return new Response(JSON.stringify({ items: [message1, message2] }));
       return new Response(null, { status: 500 });
     };
     const servers = await Servers.fromInfos(infos);
@@ -215,7 +215,7 @@ describe("servers", () => {
         request.method === "GET" &&
         request.url.toString() === `http://a.example/${did}/actor/inbox`
       )
-        return new Response(JSON.stringify({ orderedItems: [message1, message2] }));
+        return new Response(JSON.stringify({ items: [message1, message2] }));
       return new Response(null, { status: 500 });
     };
     const servers = await Servers.fromInfos(infos);

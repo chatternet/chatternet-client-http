@@ -117,7 +117,7 @@ export class Servers {
     const response = await getInbox(did, url, after);
     if (!response.ok) throw Error("unable to get inbox");
     const page: unknown = await response.json();
-    const messages: unknown = get(page, "orderedItems");
+    const messages: unknown = get(page, "items");
     if (!Array.isArray(messages)) throw Error("inbox message are incorrectly formatted");
     const messagesWithId = messages.filter(Messages.isMessageWithId);
     // side effects
