@@ -1,4 +1,5 @@
 import { ChatterNet, DidKey } from "../src/index.js";
+import type { ServerInfo } from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
 import "mock-local-storage";
@@ -10,8 +11,8 @@ global.window = {
 };
 
 describe("chatter net", () => {
-  const defaultServers = process.env.CHATTERNET_TEST_SERVER
-    ? [process.env.CHATTERNET_TEST_SERVER]
+  const defaultServers: ServerInfo[] = process.env.CHATTERNET_TEST_SERVER
+    ? [JSON.parse(process.env.CHATTERNET_TEST_SERVER)]
     : [];
 
   it("builds new from did and password and gets name", async () => {

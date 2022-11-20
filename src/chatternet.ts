@@ -48,7 +48,11 @@ export class ChatterNet {
     await (await Storage.DbPeer.new()).clear();
   }
 
-  static async new(did: string, password: string, defaultServers: string[]): Promise<ChatterNet> {
+  static async new(
+    did: string,
+    password: string,
+    defaultServers: Storage.ServerInfo[]
+  ): Promise<ChatterNet> {
     const device = await Storage.DbDevice.new();
 
     const salt = await device.idSalt.getPut(did);
@@ -61,9 +65,9 @@ export class ChatterNet {
     const { name } = idNameSuffix;
 
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
-    const peerServers = await peer.server.getUrlsByLastListen();
+    const peerServers = await peer.server.getByLastListen();
 
-    const servers = Servers.fromUrls([...peerServers, ...defaultServers]);
+    const servers = Servers.fromInfos([...peerServers, ...defaultServers]);
     const chatternet = new ChatterNet(name, key, { device, peer }, servers);
 
     return chatternet;
@@ -138,8 +142,8 @@ export class ChatterNet {
   }
 
   async getFollowsMessage(): Promise<MessageObjectDoc> {
-    const followSelf = `${this.getDid()}/actor`
-    const follows = [...new Set([...await this.dbs.peer.follow.getAll(), followSelf])];
+    const followSelf = `${this.getDid()}/actor`;
+    const follows = [...new Set([...(await this.dbs.peer.follow.getAll()), followSelf])];
     const message = await Messages.newMessage(this.getDid(), follows, "Follow", null, this.key);
     return { message };
   }

@@ -8,6 +8,11 @@ export interface IdName {
   name: string;
 }
 
+export interface ServerInfo {
+  url: string;
+  did: string;
+}
+
 export async function cryptoKeyFromPassword(
   password: string,
   salt: Uint8Array
@@ -152,7 +157,7 @@ class StoreIdName {
 }
 
 interface RecordServer {
-  url: string;
+  info: ServerInfo;
   lastListenTimestamp: number;
 }
 
@@ -162,7 +167,7 @@ class StoreServer {
   constructor(readonly db: IDBPDatabase, readonly name: string = StoreServer.DEFAULT_NAME) {}
 
   static create(db: IDBPDatabase, name: string = StoreServer.DEFAULT_NAME) {
-    db.createObjectStore(name, { keyPath: "url" }).createIndex(
+    db.createObjectStore(name, { keyPath: "info.url" }).createIndex(
       "lastListenTimestamp",
       "lastListenTimestamp"
     );
@@ -175,26 +180,21 @@ class StoreServer {
 
   async update(record: RecordServer) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const prev: RecordServer | undefined = await transaction.store.get(record.url);
+    const prev: RecordServer | undefined = await transaction.store.get(record.info.url);
     await transaction.store.put({ ...prev, ...record });
   }
 
-  async get(url: string): Promise<RecordServer | undefined> {
+  async getByLastListen(count?: number): Promise<ServerInfo[]> {
     const transaction = this.db.transaction(this.name, "readonly");
-    return await transaction.store.get(url);
-  }
-
-  async getUrlsByLastListen(count?: number): Promise<string[]> {
-    const transaction = this.db.transaction(this.name, "readonly");
-    let urls: string[] = [];
+    let serversInfo: ServerInfo[] = [];
     for await (const cursor of transaction.store
       .index("lastListenTimestamp")
       .iterate(null, "prev")) {
       const record: RecordServer = cursor.value;
-      urls.push(record.url);
-      if (count && urls.length >= count) break;
+      serversInfo.push(record.info);
+      if (count && serversInfo.length >= count) break;
     }
-    return urls;
+    return serversInfo;
   }
 }
 

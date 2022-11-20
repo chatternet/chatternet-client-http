@@ -50,25 +50,30 @@ describe("storage", () => {
     it("puts and gets servers", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      await db.server.update({ url: "https://a.example.com", lastListenTimestamp: 0 });
+      await db.server.update({
+        info: { url: "https://a.example.com", did: "did:example:a" },
+        lastListenTimestamp: 0,
+      });
       // update
       await db.server.update({
-        url: "https://a.example.com",
+        info: { url: "https://a.example.com", did: "did:example:a" },
         lastListenTimestamp: 0,
       });
       await db.server.update({
-        url: "https://a.example.com",
+        info: { url: "https://a.example.com", did: "did:example:a" },
         lastListenTimestamp: 1,
       });
-      await db.server.update({ url: "https://b.example.com", lastListenTimestamp: 0 });
-      await db.server.update({ url: "https://c.example.com", lastListenTimestamp: 2 });
-      assert.deepEqual(await db.server.get("https://a.example.com"), {
-        url: "https://a.example.com",
-        lastListenTimestamp: 1,
+      await db.server.update({
+        info: { url: "https://b.example.com", did: "did:example:a" },
+        lastListenTimestamp: 0,
       });
-      assert.deepEqual(await db.server.getUrlsByLastListen(2), [
-        "https://c.example.com",
-        "https://a.example.com",
+      await db.server.update({
+        info: { url: "https://c.example.com", did: "did:example:c" },
+        lastListenTimestamp: 2,
+      });
+      assert.deepEqual(await db.server.getByLastListen(2), [
+        { url: "https://c.example.com", did: "did:example:c" },
+        { url: "https://a.example.com", did: "did:example:a" },
       ]);
     });
 

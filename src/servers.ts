@@ -1,22 +1,24 @@
 import * as Messages from "./messages.js";
+import type { ServerInfo } from "./storage.js";
 import { get } from "lodash-es";
 
 export interface Server {
   url: string;
+  did: string;
   knownIds: Set<string>;
 }
 
-export function newServer(url: string): Server {
+export function newServer(info: ServerInfo): Server {
   const knownIds: Set<string> = new Set();
-  return { url, knownIds };
+  return { ...info, knownIds };
 }
 
 async function postMessage(
   message: Messages.Message,
   did: string,
-  server: string
+  server_url: string
 ): Promise<Response> {
-  const url = new URL(`/${did}/actor/outbox`, server);
+  const url = new URL(`/${did}/actor/outbox`, server_url);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(message),
@@ -25,8 +27,8 @@ async function postMessage(
   return await fetch(request);
 }
 
-async function postObjectDoc(objetDoc: Messages.ObjectDoc, server: string): Promise<Response> {
-  const url = new URL(`/${objetDoc.id}`, server);
+async function postObjectDoc(objetDoc: Messages.ObjectDoc, server_url: string): Promise<Response> {
+  const url = new URL(`/${objetDoc.id}`, server_url);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(objetDoc),
@@ -35,8 +37,8 @@ async function postObjectDoc(objetDoc: Messages.ObjectDoc, server: string): Prom
   return await fetch(request);
 }
 
-async function getInbox(did: string, server: string, after?: string): Promise<Response> {
-  const url = new URL(`/${did}/actor/inbox`, server);
+async function getInbox(did: string, server_url: string, after?: string): Promise<Response> {
+  const url = new URL(`/${did}/actor/inbox`, server_url);
   if (after) url.searchParams.set("after", after);
   const request = new Request(url, {
     method: "GET",
@@ -44,8 +46,8 @@ async function getInbox(did: string, server: string, after?: string): Promise<Re
   return await fetch(request);
 }
 
-async function getObjectDoc(id: string, server: string): Promise<Response> {
-  const url = new URL(`/${id}`, server);
+async function getObjectDoc(id: string, server_url: string): Promise<Response> {
+  const url = new URL(`/${id}`, server_url);
   const request = new Request(url, {
     method: "GET",
   });
@@ -55,8 +57,8 @@ async function getObjectDoc(id: string, server: string): Promise<Response> {
 export class Servers {
   constructor(readonly urlsServer: Map<string, Server>) {}
 
-  static fromUrls(urls: string[]): Servers {
-    return new Servers(new Map(urls.map((x) => [x, newServer(x)])));
+  static fromInfos(infos: ServerInfo[]): Servers {
+    return new Servers(new Map(infos.map((x) => [x.url, newServer(x)])));
   }
 
   async postMessage(message: Messages.MessageWithId, did: string) {

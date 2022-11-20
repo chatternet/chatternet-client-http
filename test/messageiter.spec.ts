@@ -20,15 +20,18 @@ describe("message iter", () => {
       await Messages.newMessage(actorDid, ["urn:cid:d"], "Create", null, key),
     ];
 
-    const servers = Servers.fromUrls(["https://a.example", "https://b.example"]);
+    const servers = Servers.fromInfos([
+      { url: "http://a.example", did: "did:example:a" },
+      { url: "http://b.example", did: "did:example:b" },
+    ]);
     servers.getInbox = async (url: string, did: string, after?: string) => {
-      if (url === "https://a.example") {
+      if (url === "http://a.example") {
         if (did !== actorDid) return [];
         if (after == null) return messagesA.slice(0, 2);
         else if (after == messagesA[1].id) return messagesA.slice(1, 1 + 2);
         else if (after == messagesA[2].id) return messagesA.slice(2, 2 + 2);
         else return [];
-      } else if (url === "https://b.example") {
+      } else if (url === "http://b.example") {
         if (did !== actorDid) return [];
         return messagesB;
       } else throw Error("server URL is not known");
