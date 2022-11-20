@@ -123,12 +123,17 @@ export class ChatterNet {
     return { message };
   }
 
-  async newView(message: Messages.MessageWithId): Promise<Messages.MessageWithId | undefined> {
+  async newView(
+    message: Messages.MessageWithId,
+    audience?: string[]
+  ): Promise<Messages.MessageWithId | undefined> {
     // don't view indirect messages
     if (message.origin) return;
     const did = DidKey.didFromKey(this.key);
+    audience = audience ? audience : [`${did}/actor/followers`];
     const view = await Messages.newMessage(did, message.object, "View", null, this.key, {
       origin: message.id,
+      audience,
     });
     return view;
   }
