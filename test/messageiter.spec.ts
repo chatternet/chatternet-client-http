@@ -20,20 +20,33 @@ describe("message iter", () => {
       await Messages.newMessage(actorDid, ["urn:cid:d"], "Create", null, key),
     ];
 
+    const messagesAGlobal = [
+      await Messages.newMessage(actorDid, ["urn:cid:e"], "Create", null, key),
+    ];
+
     const servers = Servers.fromInfos([
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ]);
     servers.getInbox = async (url: string, did: string, after?: string) => {
       if (url === "http://a.example") {
-        if (did !== actorDid) return [];
-        if (after == null) return messagesA.slice(0, 2);
-        else if (after == messagesA[1].id) return messagesA.slice(1, 1 + 2);
-        else if (after == messagesA[2].id) return messagesA.slice(2, 2 + 2);
-        else return [];
+        if (did === actorDid) {
+          if (after == null) return messagesA.slice(0, 2);
+          else if (after === messagesA[1].id) return messagesA.slice(1, 1 + 2);
+          else if (after === messagesA[2].id) return messagesA.slice(2, 2 + 2);
+          else return [];
+        } else if (did === "did:example:a") {
+          return messagesAGlobal;
+        } else {
+          return [];
+        }
       } else if (url === "http://b.example") {
-        if (did !== actorDid) return [];
-        return messagesB;
+        if (did === actorDid) {
+          if (after == null) return messagesB;
+          else return [];
+        } else {
+          return [];
+        }
       } else throw Error("server URL is not known");
     };
 
@@ -41,6 +54,7 @@ describe("message iter", () => {
     assert.equal((await messageIter.next())?.object[0], "urn:cid:a");
     assert.equal((await messageIter.next())?.object[0], "urn:cid:b");
     assert.equal((await messageIter.next())?.object[0], "urn:cid:d");
+    assert.equal((await messageIter.next())?.object[0], "urn:cid:e");
     assert.equal((await messageIter.next())?.object[0], "urn:cid:c");
     assert.ok(!(await messageIter.next()));
   });
