@@ -127,9 +127,11 @@ export class ChatterNet {
     message: Messages.MessageWithId,
     audience?: string[]
   ): Promise<Messages.MessageWithId | undefined> {
+    // don't view messages from self
+    const did = DidKey.didFromKey(this.key);
+    if (message.actor === `${did}/actor`) return;
     // don't view indirect messages
     if (message.origin) return;
-    const did = DidKey.didFromKey(this.key);
     audience = audience ? audience : [`${did}/actor/followers`];
     const view = await Messages.newMessage(did, message.object, "View", null, this.key, {
       origin: message.id,
