@@ -16,9 +16,9 @@ export function newServer(info: ServerInfo): Server {
 async function postMessage(
   message: Messages.Message,
   did: string,
-  server_url: string
+  serverUrl: string
 ): Promise<Response> {
-  const url = new URL(`/${did}/actor/outbox`, server_url);
+  const url = new URL(`${serverUrl}/${did}/actor/outbox`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(message),
@@ -27,8 +27,8 @@ async function postMessage(
   return await fetch(request);
 }
 
-async function postObjectDoc(objetDoc: Messages.ObjectDoc, server_url: string): Promise<Response> {
-  const url = new URL(`/${objetDoc.id}`, server_url);
+async function postObjectDoc(objetDoc: Messages.ObjectDoc, serverUrl: string): Promise<Response> {
+  const url = new URL(`${serverUrl}/${objetDoc.id}`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(objetDoc),
@@ -37,8 +37,8 @@ async function postObjectDoc(objetDoc: Messages.ObjectDoc, server_url: string): 
   return await fetch(request);
 }
 
-async function getInbox(did: string, server_url: string, after?: string): Promise<Response> {
-  const url = new URL(`/${did}/actor/inbox`, server_url);
+async function getInbox(did: string, serverUrl: string, after?: string): Promise<Response> {
+  const url = new URL(`${serverUrl}/${did}/actor/inbox`);
   if (after) url.searchParams.set("after", after);
   const request = new Request(url, {
     method: "GET",
@@ -46,8 +46,8 @@ async function getInbox(did: string, server_url: string, after?: string): Promis
   return await fetch(request);
 }
 
-async function getObjectDoc(id: string, server_url: string): Promise<Response> {
-  const url = new URL(`/${id}`, server_url);
+async function getObjectDoc(id: string, serverUrl: string): Promise<Response> {
+  const url = new URL(`${serverUrl}/${id}`);
   const request = new Request(url, {
     method: "GET",
   });
