@@ -120,11 +120,12 @@ export class ChatterNet {
     return { message, objectDoc };
   }
 
-  async newFollow(actorId: string, audience?: string[]): Promise<MessageObjectDoc> {
-    await this.dbs.peer.follow.put(actorId);
+  async newFollow(id: string, audience?: string[]): Promise<MessageObjectDoc> {
+    await this.dbs.peer.follow.put(id);
+    await this.dbs.peer.follow.put(`${id}/followers`);
     const did = this.getDid();
-    audience = audience ? audience : [`${did}/actor/followers`, `${actorId}/followers`];
-    const message = await Messages.newMessage(did, [actorId], "Follow", null, this.key, {
+    audience = audience ? audience : [`${did}/actor/followers`, `${id}/followers`];
+    const message = await Messages.newMessage(did, [id], "Follow", null, this.key, {
       audience,
     });
     return { message };

@@ -3,6 +3,8 @@
 Chatter Net is a modern decentralized semantic web built atop self-sovereign identity.
 
 Find more information [chatternet.github.io](https://chatternet.github.io/).
+For more, you can have a look at the sibling [server project](https://github.com/chatternet/chatternet-server-http),
+and a prototype work-in-progress [social application](https://www.conversely.social) used to dog food the development process.
 
 **Warning**: Chatter Net is currently in the prototype phase.
 Features are missing,
@@ -54,6 +56,15 @@ It would be possible (though prohibitively slow) to operate a Chatter Net networ
 
 This library includes client functionality to communicate with a network of [HTTP servers](https://github.com/chatternet/chatternet-server-http/).
 Other network implementations could be added in the future.
+
+## Roadmap
+
+There is a lot of work still needed to make this project workable. Here are some short term objectives:
+
+- Message deletion and unfollow.
+- Local message store.
+- Server selection and load balancing.
+- Account migration / recovery.
 
 ## Examples
 
@@ -129,33 +140,3 @@ For example, to verify if a new node builds and connects:
 ```bash
 CHATTERNET_TEST_SERVER='http://127.0.0.1:3030' npm run test -- -- -f 'chatter net builds new'
 ```
-
-## TODO
-
-- pin messages to local
-  - when message is added
-  - for messages created by the user
-- transfer key to another device
-- move an account
-- interact with top servers
-  - verify health periodically
-
-### State
-
-- Chatter Net
-  - Manages local state derived from messages as pertains to local person
-  - Names of other persons
-  - Views of messages
-  - Follows of other persons
-- Servers:
-  - Manages cache state to facilitate communication with and among servers
-  - Responsible for relaying messages and objects to other servers
-  - NOTE: relay a single message, then its objects
-- Message list:
-  - Manages per-view state for a list of messages to display
-  - Builds from servers inboxes
-  - Tracks cursor into severs
-  - Can extend list
-  - Collects resources required to display messages
-    - source message
-    - objects
