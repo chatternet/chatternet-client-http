@@ -67,8 +67,15 @@ export class ChatterNet {
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
     const peerServers = await peer.server.getByLastListen();
 
+    // TODO: server selection
     const servers = Servers.fromInfos([...peerServers, ...defaultServers]);
     const chatternet = new ChatterNet(name, key, { device, peer }, servers);
+
+    // share which servers the peer is listening to
+    for (const peerServer of peerServers)
+      chatternet
+        .postMessageObjectDoc(await chatternet.newListen(`${peerServer.did}/actor`, peerServer.url))
+        .catch((x) => console.error(x));
 
     return chatternet;
   }
@@ -123,6 +130,17 @@ export class ChatterNet {
     return { message };
   }
 
+  async newListen(actorId: string, url?: string, audience?: string[]): Promise<MessageObjectDoc> {
+    await this.dbs.peer.follow.put(actorId);
+    const did = this.getDid();
+    audience = audience ? audience : [`${did}/actor/followers`, `${actorId}/followers`];
+    const objectDoc = await Messages.newActor(actorId, "Server", undefined, { url });
+    const message = await Messages.newMessage(did, [actorId], "Listen", null, this.key, {
+      audience,
+    });
+    return { message, objectDoc };
+  }
+
   async newView(
     message: Messages.MessageWithId,
     audience?: string[]
@@ -138,6 +156,10 @@ export class ChatterNet {
       audience,
     });
     return view;
+  }
+
+  async addServer(did: string, url: string, lastListenTimestamp: number) {
+    this.dbs.peer.server.update({ info: { url, did }, lastListenTimestamp });
   }
 
   async getActorMessage(): Promise<MessageObjectDoc> {

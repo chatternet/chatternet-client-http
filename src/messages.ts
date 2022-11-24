@@ -115,10 +115,9 @@ export interface Actor extends ObjectBase {
 export async function newActor(
   did: Uri,
   type: string,
-  key: Key,
+  key?: Key,
   members?: Omit<ObjectBase, "id" | "type">
 ): Promise<Actor> {
-  if (members && !key) throw Error("actor members added without a key");
   const id = `${did}/actor`;
   const inbox = `${id}/inbox`;
   const outbox = `${id}/outbox`;
