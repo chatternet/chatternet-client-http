@@ -2,7 +2,6 @@
 
 Chatter Net is a modern decentralized semantic web built atop self-sovereign identity.
 
-Find more information [chatternet.github.io](https://chatternet.github.io/).
 For more, you can have a look at the sibling [server project](https://github.com/chatternet/chatternet-server-http),
 and a prototype work-in-progress [social application](https://www.conversely.social) used to dog food the development process.
 
