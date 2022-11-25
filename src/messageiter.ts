@@ -20,19 +20,12 @@ export class MessageIter {
   ) {}
 
   static async new(did: string, servers: Servers): Promise<MessageIter> {
-    // local inbox from all servers
     const local = [...servers.urlsServer.values()].map((x) => ({
       url: x.url,
       did,
       cursor: undefined,
     }));
-    // global inbox from all servers
-    const global = [...servers.urlsServer.values()].map((x) => ({
-      url: x.url,
-      did: x.did,
-      cursor: undefined,
-    }));
-    return new MessageIter(did, servers, [...local, ...global], [], new Set());
+    return new MessageIter(did, servers, [...local], [], new Set());
   }
 
   async next(): Promise<Messages.MessageWithId | undefined> {
