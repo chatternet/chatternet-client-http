@@ -18,6 +18,111 @@ Chatter Net is a platform which is:
 - **Decentralized**: there is no central point of failure. Network consensus determines what content arrives to a user.
 - **Self-moderating**: a user has enough control over what they receive to reject spam content.
 
+Chatter Net aims to solve the problem of central ownership of user identity.
+There are currently few organizations which control the vast majority of the identities of online users.
+When the objectives of these organizations and those of the users become misaligned,
+this can cause major problems for the users.
+
+After investing 100s or 1000s of hours into building a network and content on a platform,
+a user might be banned from the platform with no appeal process,
+a user's content might be subject to summarily deleted or otherwise made inaccessible with no explanation,
+a user might be asked to pay fees to continue accessing the content and network they built themselves,
+etc.
+
+The proposed solution is simple:
+allow a user to prove their identity to other users without relying on a 3rd party;
+and allow users verify the origin of some content without relying on a 3rd party.
+
+## Examples
+
+Following is an example demonstrating how to:
+instantiate a client node,
+connect to some servers,
+and post a message to the network.
+In the examples, string enclosed in `<>` brackets are dummy values.
+
+```typescript
+import { ChatterNet } from "chatternet-client-http";
+const did = "did:key:<user>";
+const password = "<password>";
+const chatterNet = new ChatterNet(
+    did,
+    password,
+    [
+        {
+            did: "did:key:<server1>",
+            url: "https://<server1-url>",
+        },
+        {
+            did: "did:key:<key>",
+            url: "https://<server2-url>",
+        },
+    ],
+);
+const { message, objects } = await chatterNet.newNote("Hi!");
+chatterNet.postMessageObjectDoc(note);
+```
+
+The `ChatterNet.newNote` method builds an [Activity Stream](https://www.w3.org/ns/activitystreams) object of type `Create` whose object is a `Note`.
+The message is then signed with the client actor's key.
+
+The `message` variable is a [JSON-LD](https://json-ld.org/) objects similar to the following:
+
+```json
+{
+    {
+        "@context": [
+            "https://www.w3.org/ns/activitystreams",
+            "https://www.w3.org/2018/credentials/v1",
+            "https://w3id.org/security/suites/ed25519-2020/v1"
+        ],
+        "id": "urn:cid:<message>",
+        "type": "Create",
+        "actor": "did:key:<user>/actor",
+        "object": ["urn:cid:<note>"],
+        "published": "2000-01-01T00:00:00.000Z",
+        "proof": {
+            "type": "Ed25519Signature2020",
+            "proofPurpose": "assertionMethod",
+            "proofValue": "<proof>",
+            "verificationMethod": "did:key:<user>#<user>",
+            "created": "2000-00-00T00:00:00Z"
+        },
+        "audience": ["did:key:<user>/actor/followers"]
+    }
+}
+```
+
+And the `objects` variable is a list such as:
+
+```json
+[
+    {
+        "@context": ["https://www.w3.org/ns/activitystreams"],
+        "id": "urn:cid:<note>",
+        "type": "Note",
+        "content": "Hi!",
+    }
+]
+```
+
+As you can see, the message is an activity (in this case of type `Create`),
+whose actor is the local client's user.
+And the object of the activity is just the ID of the note object.
+In this way, Chatter Net messages describe content, but do not contain that content.
+
+You can also create your own messages and objects and publish them to the network:
+
+```typescript
+import { Messages } from "chatternet-client-http";
+const did = "did:key:<user>";
+const content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><body>Hi!</body>";
+const mediaType = "application/xml";
+const document = await Messages.newObjectDoc("Document", { content, mediaType });
+const message = await chatterNet.newMessage([document.id], "Create");
+chatterNet.postMessageObjectDoc({ message, objects: [document] });
+```
+
 ## Technology
 
 Whereas the world wide web is a web of HTML documents,

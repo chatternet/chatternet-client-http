@@ -20,7 +20,7 @@ describe("chatter net", () => {
     const key = await DidKey.newKey();
     const did = await ChatterNet.newAccount(key, "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    assert.equal(chatterNet.getName(), "some name");
+    assert.equal(chatterNet.getLocalName(), "some name");
   });
 
   it("doesnt build for wrong password", async () => {
@@ -37,11 +37,11 @@ describe("chatter net", () => {
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
       chatterNet.changeName("some other name");
-      assert.equal(chatterNet.getName(), "some other name");
+      assert.equal(chatterNet.getLocalName(), "some other name");
     }
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      assert.equal(chatterNet.getName(), "some other name");
+      assert.equal(chatterNet.getLocalName(), "some other name");
     }
   });
 
@@ -51,7 +51,7 @@ describe("chatter net", () => {
     const did = await ChatterNet.newAccount(key, "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      assert.ok(await chatterNet.changePassword("abc", "abcd"));
+      await chatterNet.changePassword("abc", "abcd");
     }
     {
       await ChatterNet.new(did, "abcd", defaultServers);
@@ -63,6 +63,6 @@ describe("chatter net", () => {
     const key = await DidKey.newKey();
     const did = await ChatterNet.newAccount(key, "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    assert.ok(!(await chatterNet.changePassword("abcd", "abcd")));
+    assert.rejects(() => chatterNet.changePassword("abcd", "abcd"));
   });
 });

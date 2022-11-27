@@ -120,6 +120,11 @@ class StoreKeyPair {
       return undefined;
     }
   }
+
+  async getDids(): Promise<string[]> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return (await transaction.store.getAllKeys()) as string[];
+  }
 }
 
 type RecordIdName = IdName;

@@ -19,15 +19,24 @@ describe("storage", () => {
     it("puts and gets key pair", async () => {
       const db = await Storage.DbDevice.new();
       await db.clear();
-      const key = await DidKey.newKey();
-      const did = DidKey.didFromKey(key);
-      const password = "abc";
-      const salt = await db.idSalt.getPut(did);
-      const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
-      await db.keyPair.put(key, cryptoKey);
-      const back = await db.keyPair.get(did, cryptoKey);
-      assert.ok(back);
-      assert.deepEqual(back.fingerprint(), key.fingerprint());
+
+      const key1 = await DidKey.newKey();
+      const did1 = DidKey.didFromKey(key1);
+      const salt1 = await db.idSalt.getPut(did1);
+      const cryptoKey1 = await Storage.cryptoKeyFromPassword("abc", salt1);
+      await db.keyPair.put(key1, cryptoKey1);
+
+      const key2 = await DidKey.newKey();
+      const did2 = DidKey.didFromKey(key2);
+      const salt2 = await db.idSalt.getPut(did1);
+      const cryptoKey2 = await Storage.cryptoKeyFromPassword("abcd", salt2);
+      await db.keyPair.put(key2, cryptoKey2);
+
+      const back1 = await db.keyPair.get(did1, cryptoKey1);
+      assert.ok(back1);
+      assert.deepEqual(back1.fingerprint(), key1.fingerprint());
+
+      assert.deepEqual(new Set([...(await db.keyPair.getDids())]), new Set([did1, did2]));
     });
 
     it("puts and gets name", async () => {
