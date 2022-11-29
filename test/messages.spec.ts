@@ -145,4 +145,37 @@ describe("messages", () => {
     assert.ok(!isMessageWithId(omit(message, "object")));
     assert.ok(!isMessageWithId(omit(message, "published")));
   });
+
+  it("gets message audiences", () => {
+    const message = {
+      "@context": ["a:b"],
+      id: "a:b",
+      type: "abc",
+      actor: "a:b",
+      object: ["a:b"],
+      published: "2000-01-01T00:00:00Z",
+      to: "a:b/followers",
+      cc: ["a:c/followers", "a:d/followers"],
+      audience: ["a:e/followers"],
+    };
+    const audiences = new Set(Messages.getAudiences(message));
+    assert.deepEqual(
+      audiences,
+      new Set(["a:b/followers", "a:c/followers", "a:d/followers", "a:e/followers"])
+    );
+  });
+
+  it("doest get invalid message audiences", () => {
+    const message = {
+      "@context": ["a:b"],
+      id: "a:b",
+      type: "abc",
+      actor: "a:b",
+      object: ["a:b"],
+      published: "2000-01-01T00:00:00Z",
+      to: "abc",
+    };
+    const audiences = Messages.getAudiences(message);
+    assert.equal(audiences.length, 0);
+  });
 });

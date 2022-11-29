@@ -1,4 +1,4 @@
-import { DateTime, Key, Proof, Uri, buildDocCid, sign, verify } from "./signatures.js";
+import { DateTime, Key, Proof, Uri, buildDocCid, isUri, sign, verify } from "./signatures.js";
 import { getIsoDate } from "./utils.js";
 import { has, omit } from "lodash-es";
 
@@ -223,4 +223,15 @@ export function isMessageWithId(message: unknown): message is MessageWithId {
   if (!has(message, "object")) return false;
   if (!has(message, "published")) return false;
   return true;
+}
+
+export function getAudiences(message: Message): Uri[] {
+  let audiences: Set<Uri> = new Set();
+  let sources = [message.to, message.cc, message.audience];
+  for (let source of sources) {
+    if (!source) continue;
+    const sourceList = Array.isArray(source) ? source : [source];
+    sourceList.filter((x) => isUri(x)).forEach((x) => audiences.add(x));
+  }
+  return [...audiences.values()];
 }

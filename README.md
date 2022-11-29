@@ -170,10 +170,6 @@ There is a lot of work still needed to make this project workable. Here are some
 - Server selection and load balancing.
 - Account migration / recovery.
 
-## Examples
-
-Coming soon.
-
 ## Development
 
 ### Requirements

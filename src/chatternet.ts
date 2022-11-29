@@ -25,6 +25,14 @@ export interface MessageObjectDoc {
 }
 
 /**
+ * Values used to determine a message's affinity to a user's inbox.
+ */
+export interface MessageAffinity {
+  fromContact: boolean;
+  inAudience: boolean;
+}
+
+/**
  * Chatter Net client.
  *
  * This object provides interfaces to access global Chatter Net state through
@@ -219,6 +227,32 @@ export class ChatterNet {
   }
 
   /**
+   * Calculate a message's affinity to the local user's inbox.
+   *
+   * A messages should land in a user's inbox only if it's actor is a contact
+   * of the local actor, and if it is addressed to an audience the local actor
+   * belongs to.
+   *
+   * A server could return a message to an actor which does not belong to that
+   * actor's inbox because of out-of-date data or non-compliance.
+   */
+  async buildMessageAffinity(message: Messages.MessageWithId): Promise<MessageAffinity> {
+    const localFollows = await this.dbs.peer.follow.getAll();
+    const localActor = ChatterNet.actorFromDid(this.getLocalDid());
+    const fromContact = message.actor === localActor || new Set(localFollows).has(message.actor);
+    const localAudience = ChatterNet.followersFromId(localActor);
+    const localAudiences = new Set(localFollows.map((x) => ChatterNet.followersFromId(x)));
+    const audiences = Messages.getAudiences(message);
+    let inAudience = false;
+    for (const audience of audiences) {
+      if (localAudience !== audience && !localAudiences.has(audience)) continue;
+      inAudience = true;
+      break;
+    }
+    return { fromContact, inAudience };
+  }
+
+  /**
    * Post a message and any of its provided objects to the servers.
    *
    * @param messageObjectDoc
@@ -292,7 +326,6 @@ export class ChatterNet {
    */
   async newFollow(id: string, audience?: string[]): Promise<MessageObjectDoc> {
     const idFollowers = ChatterNet.followersFromId(id);
-    await this.dbs.peer.follow.put(id);
     await this.dbs.peer.follow.put(idFollowers);
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
@@ -321,7 +354,6 @@ export class ChatterNet {
    * @returns the message and object to send
    */
   async newListen(id: string, url: string, audience?: string[]): Promise<MessageObjectDoc> {
-    await this.dbs.peer.follow.put(id);
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
