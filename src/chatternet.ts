@@ -215,7 +215,9 @@ export class ChatterNet {
    */
   async buildActor(): Promise<MessageObjectDoc> {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
-    const actor = await Messages.newActor(this.getLocalDid(), "Person", this.key);
+    const actor = await Messages.newActor(this.getLocalDid(), "Person", this.key, {
+      name: this.getLocalName(),
+    });
     const message = await Messages.newMessage(
       this.getLocalDid(),
       [actorId],
