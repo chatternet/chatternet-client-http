@@ -327,11 +327,11 @@ export class ChatterNet {
    * @returns the message and object to send
    */
   async newFollow(id: string, audience?: string[]): Promise<MessageObjectDoc> {
-    const idFollowers = ChatterNet.followersFromId(id);
-    await this.dbs.peer.follow.put(idFollowers);
+    await this.dbs.peer.follow.put(id);
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
+    const idFollowers = ChatterNet.followersFromId(id);
     audience = audience ? audience : [actorFollowers, idFollowers];
     const message = await Messages.newMessage(did, [id], "Follow", null, this.key, {
       audience,
