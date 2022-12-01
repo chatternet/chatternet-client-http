@@ -198,13 +198,7 @@ export class ChatterNet {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
     // follow all followed IDs from the local store, and self
     const follows = [...new Set([...(await this.dbs.peer.follow.getAll()), actorId])];
-    const message = await Messages.newMessage(
-      this.getLocalDid(),
-      follows,
-      "Follow",
-      null,
-      this.key
-    );
+    const message = await this.newMessage(follows, "Follow", []);
     return { message, objects: [] };
   }
 
@@ -218,13 +212,7 @@ export class ChatterNet {
     const actor = await Messages.newActor(this.getLocalDid(), "Person", this.key, {
       name: this.getLocalName(),
     });
-    const message = await Messages.newMessage(
-      this.getLocalDid(),
-      [actorId],
-      "Create",
-      null,
-      this.key
-    );
+    const message = await this.newMessage([actorId], "Create", []);
     return { message, objects: [actor] };
   }
 
@@ -297,14 +285,8 @@ export class ChatterNet {
    * @returns
    */
   async newNote(content: string, audience?: string[]): Promise<MessageObjectDoc> {
-    const did = this.getLocalDid();
-    const actorId = ChatterNet.actorFromDid(did);
-    const actorFollowers = ChatterNet.followersFromId(actorId);
-    audience = audience ? audience : [actorFollowers];
     const note = await Messages.newObjectDoc("Note", { content });
-    const message = await Messages.newMessage(did, [note.id], "Create", null, this.key, {
-      audience,
-    });
+    const message = await this.newMessage([note.id], "Create", audience);
     return { message, objects: [note] };
   }
 
@@ -328,14 +310,10 @@ export class ChatterNet {
    */
   async newFollow(id: string, audience?: string[]): Promise<MessageObjectDoc> {
     await this.dbs.peer.follow.put(id);
-    const did = this.getLocalDid();
-    const actorId = ChatterNet.actorFromDid(did);
-    const actorFollowers = ChatterNet.followersFromId(actorId);
+    const actorFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(this.getLocalDid()));
     const idFollowers = ChatterNet.followersFromId(id);
     audience = audience ? audience : [actorFollowers, idFollowers];
-    const message = await Messages.newMessage(did, [id], "Follow", null, this.key, {
-      audience,
-    });
+    const message = await this.newMessage([id], "Follow", audience);
     return { message, objects: [] };
   }
 
@@ -355,16 +333,12 @@ export class ChatterNet {
    *   actor followers and followers of the listened actor if none is provided
    * @returns the message and object to send
    */
-  async newListen(id: string, url: string, audience?: string[]): Promise<MessageObjectDoc> {
-    const did = this.getLocalDid();
-    const actorId = ChatterNet.actorFromDid(did);
-    const actorFollowers = ChatterNet.followersFromId(actorId);
-    const idFollowers = ChatterNet.followersFromId(id);
+  async newListenServer(did: string, url: string, audience?: string[]): Promise<MessageObjectDoc> {
+    const actorFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(this.getLocalDid()));
+    const idFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(did));
     audience = audience ? audience : [actorFollowers, idFollowers];
-    const server = await Messages.newActor(actorId, "Server", undefined, { url });
-    const message = await Messages.newMessage(did, [actorId], "Listen", null, this.key, {
-      audience,
-    });
+    const server = await Messages.newActor(did, "Service", undefined, { url });
+    const message = await this.newMessage([server.id], "Listen", audience);
     return { message, objects: [server] };
   }
 
@@ -382,17 +356,16 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the message and object to send
    */
-  async newView(
+  async newViewMessage(
     message: Messages.MessageWithId,
     audience?: string[]
   ): Promise<Messages.MessageWithId | undefined> {
     // don't view messages from self
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
-    // don't view messages from self
     if (message.actor === actorId) return;
     // don't view indirect messages
-    if (message.origin) return;
+    if (message.type === "View") return;
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
     const view = await Messages.newMessage(did, message.object, "View", null, this.key, {

@@ -233,10 +233,12 @@ In this way the tests run as compiled JS,
 calling code from the distributed module.
 
 To run integration tests against a server,
-set the environment variable `CHATTERNET_TEST_SERVER`.
+set the environment variable `CHATTERNET_TEST_SERVER` to the `ServerInfo` json describing the test server.
 
-For example, to verify if a new node builds and connects:
+If you are running a `chatternet-server-http` server,
+it will output the file `server-info.json` to the directory from which it is run.
+You can then do something like:
 
 ```bash
-CHATTERNET_TEST_SERVER='http://127.0.0.1:3030' npm run test -- -- -f 'chatter net builds new'
+CHATTERNET_TEST_SERVER=$(cat $SERVER/server-info.json) npm run test -- -- -f 'chatter net builds new'
 ```
