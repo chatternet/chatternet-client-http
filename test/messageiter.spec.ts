@@ -57,16 +57,28 @@ describe("message iter", () => {
     };
 
     const messageIter = await MessageIter.new(actorDid, servers, dbPeer);
-    // local messages first in reverse order
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:f");
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:e");
-    // first page of server a (order sent by server)
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:a");
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:b");
-    // only page of server b (order sent by server)
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:d");
-    // second page of server a (order sent by server)
-    assert.equal((await messageIter.next())?.object[0], "urn:cid:c");
-    assert.ok(!(await messageIter.next()));
+    const messages: Messages.MessageWithId[] = [];
+    const numCycles: number[] = [];
+    for await (const message of messageIter.messages()) {
+      messages.push(message);
+      numCycles.push(messageIter.getNumCycles());
+    }
+    const objectsIds = messages.map((x) => x.object[0]);
+    assert.deepEqual(
+      objectsIds.map((x, i) => [x, numCycles[i]]),
+      [
+        // local messages first in reverse order
+        ["urn:cid:f", 0],
+        ["urn:cid:e", 0],
+        // first page of server a (order sent by server)
+        ["urn:cid:a", 0],
+        ["urn:cid:b", 0],
+        // only page of server b (order sent by server)
+        ["urn:cid:d", 0],
+        // second page of server a (order sent by server)
+        // num cycles increases due to first full cycle
+        ["urn:cid:c", 1],
+      ]
+    );
   });
 });

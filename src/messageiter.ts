@@ -9,16 +9,14 @@ interface ServerCursor {
 }
 
 export class MessageIter {
-  idx: number = 0;
-  cursor: string | undefined = undefined;
-  localCursor: string | undefined = undefined;
+  private numCycles: number = 0;
+  private localCursor: string | undefined = undefined;
 
   constructor(
     readonly did: string,
     readonly servers: Servers,
     readonly serverCursors: ServerCursor[],
     readonly dbPeer: DbPeer,
-    readonly messages: Messages.MessageWithId[],
     readonly messagesId: Set<string>
   ) {}
 
@@ -28,42 +26,49 @@ export class MessageIter {
       did,
       cursor: undefined,
     }));
-    return new MessageIter(did, servers, cursors, dbPeer, [], new Set());
+    return new MessageIter(did, servers, cursors, dbPeer, new Set());
   }
 
-  async next(): Promise<Messages.MessageWithId | undefined> {
-    // get from local first
-    if (this.cursor == this.localCursor) {
+  getNumCycles(): number {
+    return this.numCycles;
+  }
+
+  async *messages(): AsyncGenerator<Messages.MessageWithId> {
+    this.numCycles = 0;
+    while (true) {
+      let yielded = false;
+
+      // get from local first
       for (const messageId of await this.dbPeer.message.getPage(this.localCursor)) {
         if (this.messagesId.has(messageId)) continue;
         // db stores message IDs separate from message object
         const message = (await this.dbPeer.objectDoc.get(messageId)) as Messages.MessageWithId;
         if (!message) continue;
         this.messagesId.add(messageId);
-        this.messages.push(message);
         this.localCursor = messageId;
+        yielded = true;
+        yield message;
       }
-    }
 
-    // then get messages from servers
-    const numServers = this.serverCursors.length;
-    for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
-      const { url, did, cursor } = this.serverCursors[serverIdx];
-      if (this.cursor !== cursor) continue;
-      let inbox: Messages.MessageWithId[] = [];
-      try {
-        inbox = await this.servers.getInbox(url, did, cursor);
-      } catch {}
-      for (const message of inbox) {
-        if (this.messagesId.has(message.id)) continue;
-        this.messagesId.add(message.id);
-        this.messages.push(message);
-        this.serverCursors[serverIdx].cursor = message.id;
+      // then get messages from servers
+      const numServers = this.serverCursors.length;
+      for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
+        const { url, did, cursor } = this.serverCursors[serverIdx];
+        let inbox: Messages.MessageWithId[] = [];
+        try {
+          inbox = await this.servers.getInbox(url, did, cursor);
+        } catch {}
+        for (const message of inbox) {
+          if (this.messagesId.has(message.id)) continue;
+          this.messagesId.add(message.id);
+          this.serverCursors[serverIdx].cursor = message.id;
+          yielded = true;
+          yield message;
+        }
       }
+
+      this.numCycles += 1;
+      if (!yielded) break;
     }
-    if (this.messages.length <= this.idx) return undefined;
-    const message = this.messages[this.idx++];
-    this.cursor = message.id;
-    return message;
   }
 }
