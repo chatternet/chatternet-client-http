@@ -4,6 +4,8 @@ import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
+const DB_VERSION = 2;
+
 export interface IdName {
   id: string;
   name: string;
@@ -327,7 +329,7 @@ export class DbDevice {
     let storeIdSalt: StoreIdSalt | undefined = undefined;
     let storeKeyPair: StoreKeyPair | undefined = undefined;
     let storeIdName: StoreIdName | undefined = undefined;
-    const db = await openDB(name, 1, {
+    const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
         storeIdSalt = StoreIdSalt.create(db);
         storeKeyPair = StoreKeyPair.create(db);
@@ -363,7 +365,7 @@ export class DbPeer {
     let storeFollow: StoreFollow | undefined = undefined;
     let storeMessage: StoreMessage | undefined = undefined;
     let storeObjectDoc: StoreObjectDoc | undefined = undefined;
-    const db = await openDB(name, 1, {
+    const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
         storeFollow = StoreFollow.create(db);
