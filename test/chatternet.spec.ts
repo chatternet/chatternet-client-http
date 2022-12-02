@@ -174,13 +174,22 @@ describe("chatter net", () => {
     assert.equal(objects[0].id, ChatterNet.actorFromDid(did));
   });
 
-  it("posts and gets actor", async () => {
-    // TODO: update for local store
+  it("posts and gets actor with server", async () => {
     if (defaultServers.length <= 0) return;
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     await chatterNet.postMessageObjectDoc(await chatterNet.buildActor());
+    const actor = await chatterNet.getActor(ChatterNet.actorFromDid(did));
+    assert.ok(actor);
+    assert.equal(actor.id, ChatterNet.actorFromDid(did));
+  });
+
+  it("posts and gets actor with local", async () => {
+    await ChatterNet.clearDbs();
+    const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const chatterNet = await ChatterNet.new(did, "abc", []);
+    await chatterNet.storeMessageObjectDoc(await chatterNet.buildActor());
     const actor = await chatterNet.getActor(ChatterNet.actorFromDid(did));
     assert.ok(actor);
     assert.equal(actor.id, ChatterNet.actorFromDid(did));
@@ -196,7 +205,9 @@ describe("chatter net", () => {
     return messages;
   }
 
-  it("posts and gets messages", async () => {
+  it("posts and gets messages with server", async () => {
+    if (defaultServers.length <= 0) return;
+
     await ChatterNet.clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
@@ -234,6 +245,21 @@ describe("chatter net", () => {
     // did3 see view
     const messages3 = await listMessages(await chatterNet2.buildMessageIter());
     assert.ok(new Set(messages3.map((x) => x.id)).has(viewMessage.id));
+  });
+
+  it("posts and gets messages with local", async () => {
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", []);
+    // did1 posts
+    const note = await chatterNet1.newNote("Hi!");
+    await chatterNet1.storeMessageObjectDoc(note);
+    // gets object
+    assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
+    // iterates own message
+    const messages1 = await listMessages(await chatterNet1.buildMessageIter());
+    assert.ok(new Set(messages1.map((x) => x.id)).has(note.message.id));
   });
 
   it("builds message affinity", async () => {
