@@ -197,11 +197,7 @@ describe("chatter net", () => {
 
   async function listMessages(messageIter: MessageIter): Promise<MessageWithId[]> {
     const messages: MessageWithId[] = [];
-    while (true) {
-      const message = await messageIter.next();
-      if (!message) break;
-      messages.push(message);
-    }
+    for await (const message of messageIter.messages()) if (!!message) messages.push(message);
     return messages;
   }
 
