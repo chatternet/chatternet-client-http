@@ -243,17 +243,24 @@ export class ChatterNet {
   }
 
   /**
+   * Store a message and any of its provided objects to the local store.
+   *
+   * @param messageObjectDoc
+   */
+  async storeMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
+    await this.dbs.peer.message.put(messageObjectDoc.message.id);
+    await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
+    for (const objectDoc of messageObjectDoc.objects) await this.dbs.peer.objectDoc.put(objectDoc);
+  }
+
+  /**
    * Post a message and any of its provided objects to the servers.
    *
    * @param messageObjectDoc
    */
-  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc, storeLocal: boolean = false) {
-    if (storeLocal) {
-      await this.dbs.peer.message.put(messageObjectDoc.message.id);
-      await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
-      for (const objectDoc of messageObjectDoc.objects)
-        await this.dbs.peer.objectDoc.put(objectDoc);
-    }
+  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
+    // TODO: collect errors and make available
+    // TODO: send only to servers that accepted message
     await this.servers.postMessage(messageObjectDoc.message, this.getLocalDid());
     for (const objectDoc of messageObjectDoc.objects) await this.servers.postObjectDoc(objectDoc);
   }
@@ -407,12 +414,15 @@ export class ChatterNet {
    * @param id the actor ID
    * @returns the actor document
    */
-  async getObjectDoc(id: string): Promise<Messages.ObjectDocWithId | undefined> {
+  async getObjectDoc(
+    id: string,
+    validate?: boolean
+  ): Promise<Messages.ObjectDocWithId | undefined> {
     let objectDoc: Messages.ObjectDocWithId | undefined = undefined;
     // try first from local store
     if (!objectDoc) objectDoc = await this.dbs.peer.objectDoc.get(id);
     // then from servers
-    if (!objectDoc) objectDoc = await this.servers.getObjectDoc(id);
+    if (!objectDoc) objectDoc = await this.servers.getObjectDoc(id, validate);
     return objectDoc;
   }
 
@@ -426,7 +436,7 @@ export class ChatterNet {
    * @returns the actor document
    */
   async getActor(id: string): Promise<Messages.Actor | undefined> {
-    let actor: Messages.ObjectDocWithId | undefined = await this.getObjectDoc(id);
+    let actor: Messages.ObjectDocWithId | undefined = await this.getObjectDoc(id, false);
     if (!Messages.isActor(actor)) return;
     if (!(await Messages.verifyActor(actor))) return;
     return actor;

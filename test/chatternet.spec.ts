@@ -189,7 +189,7 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", []);
-    await chatterNet.postMessageObjectDoc(await chatterNet.buildActor(), true);
+    await chatterNet.storeMessageObjectDoc(await chatterNet.buildActor());
     const actor = await chatterNet.getActor(ChatterNet.actorFromDid(did));
     assert.ok(actor);
     assert.equal(actor.id, ChatterNet.actorFromDid(did));
@@ -253,7 +253,7 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
     const note = await chatterNet1.newNote("Hi!");
-    await chatterNet1.postMessageObjectDoc(note, true);
+    await chatterNet1.storeMessageObjectDoc(note);
     // gets object
     assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
     assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
