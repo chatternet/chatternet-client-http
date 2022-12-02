@@ -148,14 +148,16 @@ export class ChatterNet {
     const peer = await Storage.DbPeer.new(`Peer_${did}`);
     const peerServers = await peer.server.getByLastListen();
     const servers = Servers.fromInfos([...peerServers, ...defaultServers]);
-    const chatternet = new ChatterNet(name, key, { device, peer }, servers);
+    const chatterNet = new ChatterNet(name, key, { device, peer }, servers);
 
     // tell the server about the user name
-    chatternet.postMessageObjectDoc(await chatternet.buildActor()).catch((x) => console.error(x));
+    const actorMessageObjectDoc = await chatterNet.buildActor();
+    chatterNet.storeMessageObjectDoc(actorMessageObjectDoc);
+    chatterNet.postMessageObjectDoc(actorMessageObjectDoc).catch(() => {});
     // tell the server about the actor follows
-    chatternet.postMessageObjectDoc(await chatternet.buildFollows()).catch((x) => console.error(x));
+    chatterNet.postMessageObjectDoc(await chatterNet.buildFollows()).catch(() => {});
 
-    return chatternet;
+    return chatterNet;
   }
 
   /**

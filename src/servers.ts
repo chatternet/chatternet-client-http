@@ -94,7 +94,12 @@ export class Servers {
     });
 
     for (const server of servers) {
-      const response = await getObjectDoc(id, server.url);
+      let response: Response;
+      try {
+        response = await getObjectDoc(id, server.url);
+      } catch {
+        continue;
+      }
       if (!response.ok) continue;
       const objectDoc: unknown = await response.json();
       if (!Messages.isObjectDocWithId(objectDoc)) continue;

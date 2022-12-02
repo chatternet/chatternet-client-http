@@ -50,7 +50,11 @@ export class MessageIter {
     for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
       const { url, did, cursor } = this.serverCursors[serverIdx];
       if (this.cursor !== cursor) continue;
-      for (const message of await this.servers.getInbox(url, did, cursor)) {
+      let inbox: Messages.MessageWithId[] = [];
+      try {
+        inbox = await this.servers.getInbox(url, did, cursor);
+      } catch {}
+      for (const message of inbox) {
         if (this.messagesId.has(message.id)) continue;
         this.messagesId.add(message.id);
         this.messages.push(message);
