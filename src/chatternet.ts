@@ -247,7 +247,13 @@ export class ChatterNet {
    *
    * @param messageObjectDoc
    */
-  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
+  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc, storeLocal: boolean = false) {
+    if (storeLocal) {
+      await this.dbs.peer.message.put(messageObjectDoc.message.id);
+      await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
+      for (const objectDoc of messageObjectDoc.objects)
+        await this.dbs.peer.objectDoc.put(objectDoc);
+    }
     await this.servers.postMessage(messageObjectDoc.message, this.getLocalDid());
     for (const objectDoc of messageObjectDoc.objects) await this.servers.postObjectDoc(objectDoc);
   }
@@ -402,7 +408,12 @@ export class ChatterNet {
    * @returns the actor document
    */
   async getObjectDoc(id: string): Promise<Messages.ObjectDocWithId | undefined> {
-    return await this.servers.getObjectDoc(id);
+    let objectDoc: Messages.ObjectDocWithId | undefined = undefined;
+    // try first from local store
+    if (!objectDoc) objectDoc = await this.dbs.peer.objectDoc.get(id);
+    // then from servers
+    if (!objectDoc) objectDoc = await this.servers.getObjectDoc(id);
+    return objectDoc;
   }
 
   /**
@@ -415,7 +426,10 @@ export class ChatterNet {
    * @returns the actor document
    */
   async getActor(id: string): Promise<Messages.Actor | undefined> {
-    return await this.servers.getActor(id);
+    let actor: Messages.ObjectDocWithId | undefined = await this.getObjectDoc(id);
+    if (!Messages.isActor(actor)) return;
+    if (!(await Messages.verifyActor(actor))) return;
+    return actor;
   }
 
   /**
@@ -427,7 +441,7 @@ export class ChatterNet {
    * @returns the message iterator
    */
   async buildMessageIter(): Promise<MessageIter> {
-    return await MessageIter.new(this.getLocalDid(), this.servers);
+    return await MessageIter.new(this.getLocalDid(), this.servers, this.dbs.peer);
   }
 
   /**

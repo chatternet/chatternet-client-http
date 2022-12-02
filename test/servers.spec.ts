@@ -128,47 +128,6 @@ describe("servers", () => {
     assert.ok(!returnedObjectDoc);
   });
 
-  it("gets an actor", async () => {
-    resetFetch();
-    const key = await DidKey.newKey();
-    const did = DidKey.didFromKey(key);
-    const infos = [
-      { url: "http://a.example", did: "did:example:a" },
-      { url: "http://b.example", did: "did:example:b" },
-    ];
-    const actor = await Messages.newActor(did, "Person", key);
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input as Request;
-      if (request.method === "GET" && request.url.toString() === `http://a.example/${actor.id}`)
-        return new Response(JSON.stringify(actor));
-      return new Response(null, { status: 500 });
-    };
-    const servers = await Servers.fromInfos(infos);
-    const returnedActor = await servers.getActor(actor.id);
-    assert.deepEqual(returnedActor, actor);
-  });
-
-  it("doesnt get an invalid actor", async () => {
-    resetFetch();
-    const key = await DidKey.newKey();
-    const did = DidKey.didFromKey(key);
-    const infos = [
-      { url: "http://a.example", did: "did:example:a" },
-      { url: "http://b.example", did: "did:example:b" },
-    ];
-    const actor = await Messages.newActor(did, "Person", key);
-    actor.id = "did:example:a";
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input as Request;
-      if (request.method === "GET" && request.url.toString() === `http://a.example/${actor.id}`)
-        return new Response(JSON.stringify(actor));
-      return new Response(null, { status: 500 });
-    };
-    const servers = await Servers.fromInfos(infos);
-    const returnedActor = await servers.getActor(actor.id);
-    assert.ok(!returnedActor);
-  });
-
   it("doesnt get invalid actor", async () => {
     resetFetch();
   });

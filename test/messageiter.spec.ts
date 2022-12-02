@@ -2,6 +2,7 @@ import * as DidKey from "../src/didkey.js";
 import { MessageIter } from "../src/messageiter.js";
 import * as Messages from "../src/messages.js";
 import { Servers } from "../src/servers.js";
+import { DbPeer } from "../src/storage.js";
 import * as assert from "assert";
 
 describe("message iter", () => {
@@ -19,6 +20,17 @@ describe("message iter", () => {
       messagesA[0],
       await Messages.newMessage(actorDid, ["urn:cid:d"], "Create", null, key),
     ];
+
+    const messagesLocal = [
+      await Messages.newMessage(actorDid, ["urn:cid:e"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:f"], "Create", null, key),
+    ];
+
+    const dbPeer = await DbPeer.new();
+    await dbPeer.objectDoc.put(messagesLocal[0]);
+    await dbPeer.message.put(messagesLocal[0].id);
+    await dbPeer.objectDoc.put(messagesLocal[1]);
+    await dbPeer.message.put(messagesLocal[1].id);
 
     const servers = Servers.fromInfos([
       { url: "http://a.example", did: "did:example:a" },
@@ -44,10 +56,16 @@ describe("message iter", () => {
       } else throw Error("server URL is not known");
     };
 
-    const messageIter = await MessageIter.new(actorDid, servers);
+    const messageIter = await MessageIter.new(actorDid, servers, dbPeer);
+    // local messages first in reverse order
+    assert.equal((await messageIter.next())?.object[0], "urn:cid:f");
+    assert.equal((await messageIter.next())?.object[0], "urn:cid:e");
+    // first page of server a (order sent by server)
     assert.equal((await messageIter.next())?.object[0], "urn:cid:a");
     assert.equal((await messageIter.next())?.object[0], "urn:cid:b");
+    // only page of server b (order sent by server)
     assert.equal((await messageIter.next())?.object[0], "urn:cid:d");
+    // second page of server a (order sent by server)
     assert.equal((await messageIter.next())?.object[0], "urn:cid:c");
     assert.ok(!(await messageIter.next()));
   });
