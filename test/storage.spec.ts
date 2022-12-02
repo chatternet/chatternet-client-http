@@ -1,4 +1,4 @@
-import { DidKey } from "../src/index.js";
+import { DidKey, Messages } from "../src/index.js";
 import * as Storage from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
@@ -93,6 +93,40 @@ describe("storage", () => {
       await db.follow.put("did:example:a");
       await db.follow.put("did:example:b");
       assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:b"]);
+    });
+
+    it("puts and gets message ids", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      await db.message.put("id:a");
+      await db.message.put("id:b");
+      await db.message.put("id:c");
+      assert.deepEqual(await db.message.getPage(undefined, 3), ["id:c", "id:b", "id:a"]);
+      assert.deepEqual(await db.message.getPage(undefined, 2), ["id:c", "id:b"]);
+    });
+
+    it("gets message ids after", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      await db.message.put("id:a");
+      await db.message.put("id:b");
+      await db.message.put("id:c");
+      assert.deepEqual(await db.message.getPage("id:c", 3), ["id:b", "id:a"]);
+      assert.deepEqual(await db.message.getPage("id:b", 3), ["id:a"]);
+      assert.deepEqual(await db.message.getPage("id:a", 3), []);
+      assert.deepEqual(await db.message.getPage("id:x", 3), []);
+    });
+
+    it("puts and gets object doc", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      const objectDoc1 = await Messages.newObjectDoc("Note", { content: "abc" });
+      const objectDoc2 = await Messages.newObjectDoc("Note", { content: "abcd" });
+      await db.objectDoc.put(objectDoc1);
+      await db.objectDoc.put(objectDoc2);
+      await db.objectDoc.put(objectDoc2);
+      assert.deepEqual(await db.objectDoc.get(objectDoc1.id), objectDoc1);
+      assert.deepEqual(await db.objectDoc.get(objectDoc2.id), objectDoc2);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { didFromKey } from "./didkey.js";
+import type { Messages } from "./index.js";
 import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
@@ -238,6 +239,80 @@ class StoreFollow {
   }
 }
 
+interface RecordMessageId {
+  id: string;
+  idx?: number;
+}
+
+class StoreMessage {
+  static DEFAULT_NAME = "Message";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreMessage.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreMessage.DEFAULT_NAME) {
+    db.createObjectStore(name, { keyPath: "idx", autoIncrement: true }).createIndex("id", "id");
+    return new StoreMessage(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async put(id: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const record: RecordMessageId = { id };
+    await transaction.store.put(record);
+  }
+
+  async getPage(after?: string, pageSize: number = 32): Promise<string[]> {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    let query = null;
+    if (after != null) {
+      const cursor = await transaction.store.index("id").getKey(after);
+      if (!cursor) return [];
+      query = IDBKeyRange.upperBound(cursor, true);
+    }
+    const ids: string[] = [];
+    for await (const cursor of transaction.store.iterate(query, "prevunique")) {
+      const record: RecordMessageId = cursor.value;
+      ids.push(record.id);
+      if (ids.length >= pageSize) break;
+    }
+    return ids;
+  }
+}
+
+interface RecordObjectDoc {
+  objectDoc: Messages.ObjectDocWithId;
+}
+
+class StoreObjectDoc {
+  static DEFAULT_NAME = "ObjectDoc";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreObjectDoc.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreObjectDoc.DEFAULT_NAME) {
+    db.createObjectStore(name, { keyPath: "objectDoc.id" });
+    return new StoreObjectDoc(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async get(id: string): Promise<Messages.ObjectDocWithId | undefined> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    const record: RecordObjectDoc | undefined = await transaction.store.get(id);
+    return !!record ? record.objectDoc : undefined;
+  }
+
+  async put(objectDoc: Messages.ObjectDocWithId) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const record: RecordObjectDoc = { objectDoc };
+    await transaction.store.put(record);
+  }
+}
+
 export class DbDevice {
   static DEFAULT_NAME = "Device";
 
@@ -249,9 +324,9 @@ export class DbDevice {
   ) {}
 
   static async new(name: string = DbDevice.DEFAULT_NAME): Promise<DbDevice> {
-    let storeIdSalt = undefined;
-    let storeKeyPair = undefined;
-    let storeIdName = undefined;
+    let storeIdSalt: StoreIdSalt | undefined = undefined;
+    let storeKeyPair: StoreKeyPair | undefined = undefined;
+    let storeIdName: StoreIdName | undefined = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
         storeIdSalt = StoreIdSalt.create(db);
@@ -278,25 +353,35 @@ export class DbPeer {
   constructor(
     readonly db: IDBPDatabase,
     readonly server: StoreServer,
-    readonly follow: StoreFollow
+    readonly follow: StoreFollow,
+    readonly message: StoreMessage,
+    readonly objectDoc: StoreObjectDoc
   ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
-    let storeServer = undefined;
-    let storeFollow = undefined;
+    let storeServer: StoreServer | undefined = undefined;
+    let storeFollow: StoreFollow | undefined = undefined;
+    let storeMessage: StoreMessage | undefined = undefined;
+    let storeObjectDoc: StoreObjectDoc | undefined = undefined;
     const db = await openDB(name, 1, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
         storeFollow = StoreFollow.create(db);
+        storeMessage = StoreMessage.create(db);
+        storeObjectDoc = StoreObjectDoc.create(db);
       },
     });
     storeServer = storeServer ? storeServer : new StoreServer(db);
     storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
-    return new DbPeer(db, storeServer, storeFollow);
+    storeMessage = storeMessage ? storeMessage : new StoreMessage(db);
+    storeObjectDoc = storeObjectDoc ? storeObjectDoc : new StoreObjectDoc(db);
+    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc);
   }
 
   async clear() {
     await this.server.clear();
     await this.follow.clear();
+    await this.message.clear();
+    await this.objectDoc.clear();
   }
 }
