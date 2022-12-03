@@ -18,7 +18,8 @@ async function postMessage(
   did: string,
   serverUrl: string
 ): Promise<Response> {
-  const url = new URL(`${serverUrl}/${did}/actor/outbox`);
+  serverUrl = serverUrl.replace(/\/$/, "");
+  const url = new URL(`${serverUrl}/ap/${did}/actor/outbox`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(message),
@@ -28,7 +29,8 @@ async function postMessage(
 }
 
 async function postObjectDoc(objetDoc: Messages.ObjectDoc, serverUrl: string): Promise<Response> {
-  const url = new URL(`${serverUrl}/${objetDoc.id}`);
+  serverUrl = serverUrl.replace(/\/$/, "");
+  const url = new URL(`${serverUrl}/ap/${objetDoc.id}`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(objetDoc),
@@ -38,7 +40,8 @@ async function postObjectDoc(objetDoc: Messages.ObjectDoc, serverUrl: string): P
 }
 
 async function getInbox(did: string, serverUrl: string, after?: string): Promise<Response> {
-  const url = new URL(`${serverUrl}/${did}/actor/inbox`);
+  serverUrl = serverUrl.replace(/\/$/, "");
+  const url = new URL(`${serverUrl}/ap/${did}/actor/inbox`);
   if (after) url.searchParams.set("after", after);
   const request = new Request(url, {
     method: "GET",
@@ -47,7 +50,8 @@ async function getInbox(did: string, serverUrl: string, after?: string): Promise
 }
 
 async function getObjectDoc(id: string, serverUrl: string): Promise<Response> {
-  const url = new URL(`${serverUrl}/${id}`);
+  serverUrl = serverUrl.replace(/\/$/, "");
+  const url = new URL(`${serverUrl}/ap/${id}`);
   const request = new Request(url, {
     method: "GET",
   });
