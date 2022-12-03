@@ -30,8 +30,8 @@ describe("servers", () => {
     await servers.postMessage(message, did);
     await servers.postMessage(message, did);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/${did}/actor/outbox`,
-      `http://b.example/${did}/actor/outbox`,
+      `http://a.example/ap/${did}/actor/outbox`,
+      `http://b.example/ap/${did}/actor/outbox`,
     ]);
   });
 
@@ -53,8 +53,8 @@ describe("servers", () => {
     await servers.postObjectDoc(objectDoc);
     await servers.postObjectDoc(objectDoc);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/${objectDoc.id}`,
-      `http://b.example/${objectDoc.id}`,
+      `http://a.example/ap/${objectDoc.id}`,
+      `http://b.example/ap/${objectDoc.id}`,
     ]);
   });
 
@@ -67,7 +67,10 @@ describe("servers", () => {
     const objectDoc = await Messages.newObjectDoc("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
+      )
         return new Response(JSON.stringify(objectDoc));
       return new Response(null, { status: 500 });
     };
@@ -88,9 +91,15 @@ describe("servers", () => {
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       requestedUrls.push(request.url.toString());
-      if (request.method === "GET" && request.url.toString() === `http://b.example/${objectDoc.id}`)
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://b.example/ap/${objectDoc.id}`
+      )
         return new Response(JSON.stringify(objectDoc));
-      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
+      )
         return new Response(null, { status: 404 });
       return new Response(null, { status: 500 });
     };
@@ -98,13 +107,13 @@ describe("servers", () => {
     // tries both URLs before finding the object
     await servers.getObjectDoc(objectDoc.id);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/${objectDoc.id}`,
-      `http://b.example/${objectDoc.id}`,
+      `http://a.example/ap/${objectDoc.id}`,
+      `http://b.example/ap/${objectDoc.id}`,
     ]);
     // directly asks b since it knows it has the object
     requestedUrls = [];
     await servers.getObjectDoc(objectDoc.id);
-    assert.deepEqual(requestedUrls, [`http://b.example/${objectDoc.id}`]);
+    assert.deepEqual(requestedUrls, [`http://b.example/ap/${objectDoc.id}`]);
   });
 
   it("doesnt get invalid object", async () => {
@@ -118,7 +127,10 @@ describe("servers", () => {
     objectDoc.id = "urn:cid:abc";
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
+      )
         return new Response(JSON.stringify(objectDoc));
       return new Response(null, { status: 500 });
     };
@@ -146,7 +158,7 @@ describe("servers", () => {
       const request = input as Request;
       if (
         request.method === "GET" &&
-        request.url.toString() === `http://a.example/${did}/actor/inbox`
+        request.url.toString() === `http://a.example/ap/${did}/actor/inbox`
       )
         return new Response(JSON.stringify({ items: [message1, message2] }));
       return new Response(null, { status: 500 });
@@ -172,7 +184,7 @@ describe("servers", () => {
       const request = input as Request;
       if (
         request.method === "GET" &&
-        request.url.toString() === `http://a.example/${did}/actor/inbox`
+        request.url.toString() === `http://a.example/ap/${did}/actor/inbox`
       )
         return new Response(JSON.stringify({ items: [message1, message2] }));
       return new Response(null, { status: 500 });
