@@ -55,13 +55,18 @@ async function getObjectDoc(id: string, serverUrl: string): Promise<Response> {
 }
 
 export class Servers {
-  constructor(readonly urlsServer: Map<string, Server>) {}
+  constructor(
+    readonly urlsServer: Map<string, Server>,
+    readonly objectDocCache: Map<string, Messages.ObjectDocWithId>
+  ) {}
 
   static fromInfos(infos: ServerInfo[]): Servers {
-    return new Servers(new Map(infos.map((x) => [x.url, newServer(x)])));
+    return new Servers(new Map(infos.map((x) => [x.url, newServer(x)])), new Map());
   }
 
   async postMessage(message: Messages.MessageWithId, did: string) {
+    // messages are isomorphic to ID, can cache
+    this.objectDocCache.set(message.id, message);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
       if (knownIds.has(message.id)) continue;
@@ -71,6 +76,9 @@ export class Servers {
   }
 
   async postObjectDoc(objectDoc: Messages.ObjectDocWithId) {
+    if (objectDoc.id.startsWith("urn:cid:"))
+      // object ID is a CID, it is isomorphic to its content, can cache
+      this.objectDocCache.set(objectDoc.id, objectDoc);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
       if (knownIds.has(objectDoc.id)) continue;
@@ -83,6 +91,10 @@ export class Servers {
     id: string,
     validate: boolean = true
   ): Promise<Messages.ObjectDocWithId | undefined> {
+    // first try the local cache
+    const local = this.objectDocCache.get(id);
+    if (local != null) return local;
+
     // want to iterate starting with most likely to have doc
     const servers = [...this.urlsServer.values()];
     servers.sort((a, b) => {
