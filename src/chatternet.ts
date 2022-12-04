@@ -378,7 +378,7 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the message and object to send
    */
-  async newViewMessage(
+  async getOrNewViewMessage(
     message: Messages.MessageWithId,
     audience?: string[]
   ): Promise<Messages.MessageWithId | undefined> {
@@ -388,12 +388,19 @@ export class ChatterNet {
     if (message.actor === actorId) return;
     // don't view indirect messages
     if (message.type === "View") return;
+
+    // try first to get a previous view message
+    const [objectId] = message.object;
+    const prevView = await this.dbs.peer.viewMessage.get(objectId);
+    if (prevView != null) return prevView;
+
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
     const view = await Messages.newMessage(actorDid, message.object, "View", null, this.key, {
       origin: message.id,
       audience,
     });
+    await this.dbs.peer.viewMessage.put(view);
     return view;
   }
 

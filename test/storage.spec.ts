@@ -128,5 +128,22 @@ describe("storage", () => {
       assert.deepEqual(await db.objectDoc.get(objectDoc1.id), objectDoc1);
       assert.deepEqual(await db.objectDoc.get(objectDoc2.id), objectDoc2);
     });
+
+    it("puts and gets view messages", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      const key = await DidKey.newKey();
+      const did = DidKey.didFromKey(key);
+      const view1 = await Messages.newMessage(did, ["id:a"], "View", null, key);
+      const view2 = await Messages.newMessage(did, ["id:b"], "View", null, key);
+      await db.viewMessage.put(view1);
+      await db.viewMessage.put(view2);
+      assert.deepEqual(await db.viewMessage.get("id:a"), view1);
+      assert.deepEqual(await db.viewMessage.get("id:b"), view2);
+      // overrides
+      const view3 = await Messages.newMessage(did, ["id:a"], "View", null, key);
+      await db.viewMessage.put(view3);
+      assert.deepEqual(await db.viewMessage.get("id:a"), view3);
+    });
   });
 });

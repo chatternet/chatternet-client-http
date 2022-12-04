@@ -131,7 +131,7 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
     const origin = await chatterNet1.newMessage(["id:a"], "Create");
-    const message = await chatterNet2.newViewMessage(origin);
+    const message = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(message);
     assert.equal(message.type, "View");
     assert.deepEqual(message.origin, origin.id);
@@ -145,7 +145,7 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
     const origin = await chatterNet1.newMessage(["id:a"], "View");
-    const message = await chatterNet2.newViewMessage(origin);
+    const message = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(!message);
   });
 
@@ -154,8 +154,22 @@ describe("chatter net", () => {
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const origin = await chatterNet1.newMessage(["id:a"], "Create");
-    const message = await chatterNet1.newViewMessage(origin);
+    const message = await chatterNet1.getOrNewViewMessage(origin);
     assert.ok(!message);
+  });
+
+  it("re-uses a view message", async () => {
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    const origin = await chatterNet1.newMessage(["id:a"], "Create");
+    const message1 = await chatterNet2.getOrNewViewMessage(origin);
+    const message2 = await chatterNet2.getOrNewViewMessage(origin);
+    assert.ok(message1);
+    assert.ok(message2);
+    assert.deepEqual(message1, message2);
   });
 
   it("builds actor", async () => {
@@ -225,7 +239,7 @@ describe("chatter net", () => {
     const messages2 = await listMessages(await chatterNet2.buildMessageIter());
     assert.ok(new Set(messages2.map((x) => x.id)).has(note.message.id));
     // views message
-    const viewMessage = await chatterNet2.newViewMessage(note.message);
+    const viewMessage = await chatterNet2.getOrNewViewMessage(note.message);
     assert.ok(viewMessage);
     await chatterNet2.postMessageObjectDoc({ message: viewMessage, objects: [] });
 
@@ -280,7 +294,7 @@ describe("chatter net", () => {
       fromContact: true,
       inAudience: true,
     });
-    const viewMessage = await chatterNet2.newViewMessage(noteMessage);
+    const viewMessage = await chatterNet2.getOrNewViewMessage(noteMessage);
     assert.ok(viewMessage);
 
     // did3 follows did2
