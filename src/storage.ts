@@ -315,6 +315,41 @@ class StoreObjectDoc {
   }
 }
 
+interface RecordViewMessage {
+  message: Messages.MessageWithId;
+  objectId: string;
+}
+
+/**
+ * Stores a single view message for any object ID.
+ */
+class StoreViewMessage {
+  static DEFAULT_NAME = "ViewMessage";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreViewMessage.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreViewMessage.DEFAULT_NAME) {
+    db.createObjectStore(name, { keyPath: "objectId" });
+    return new StoreViewMessage(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async get(objectId: string): Promise<Messages.MessageWithId | undefined> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    const record: RecordViewMessage | undefined = await transaction.store.get(objectId);
+    return record?.message;
+  }
+
+  async put(message: Messages.MessageWithId) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const record: RecordViewMessage = { message, objectId: message.object[0] };
+    await transaction.store.put(record);
+  }
+}
+
 export class DbDevice {
   static DEFAULT_NAME = "Device";
 
@@ -357,7 +392,8 @@ export class DbPeer {
     readonly server: StoreServer,
     readonly follow: StoreFollow,
     readonly message: StoreMessage,
-    readonly objectDoc: StoreObjectDoc
+    readonly objectDoc: StoreObjectDoc,
+    readonly viewMessage: StoreViewMessage
   ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
@@ -365,19 +401,22 @@ export class DbPeer {
     let storeFollow: StoreFollow | undefined = undefined;
     let storeMessage: StoreMessage | undefined = undefined;
     let storeObjectDoc: StoreObjectDoc | undefined = undefined;
+    let storeViewMessage: StoreViewMessage | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
         storeFollow = StoreFollow.create(db);
         storeMessage = StoreMessage.create(db);
         storeObjectDoc = StoreObjectDoc.create(db);
+        storeViewMessage = StoreViewMessage.create(db);
       },
     });
     storeServer = storeServer ? storeServer : new StoreServer(db);
     storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
     storeMessage = storeMessage ? storeMessage : new StoreMessage(db);
     storeObjectDoc = storeObjectDoc ? storeObjectDoc : new StoreObjectDoc(db);
-    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc);
+    storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
+    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc, storeViewMessage);
   }
 
   async clear() {
@@ -385,5 +424,6 @@ export class DbPeer {
     await this.follow.clear();
     await this.message.clear();
     await this.objectDoc.clear();
+    await this.viewMessage.clear();
   }
 }
