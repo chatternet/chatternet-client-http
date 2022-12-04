@@ -118,15 +118,10 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const { message, objects } = await chatterNet.newListenServer(
-      "did:example:a",
-      "https://a.example"
-    );
+    const message = await chatterNet.newListenServer("did:example:a", "https://a.example");
     assert.equal(message.type, "Listen");
-    assert.equal(objects.length, 1);
-    assert.equal(objects[0].type, "Service");
-    assert.equal(objects[0].id, "did:example:a/actor");
-    assert.equal(objects[0].url, "https://a.example");
+    assert.deepEqual(message.object, ["did:example:a/actor"]);
+    assert.deepEqual(message.instrument, { type: "Link", href: "https://a.example" });
   });
 
   it("builds a view message", async () => {

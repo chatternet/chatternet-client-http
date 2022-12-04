@@ -115,7 +115,7 @@ export interface Actor extends ObjectBase {
 export async function newActor(
   did: Uri,
   type: string,
-  key?: Key,
+  key: Key,
   members?: Omit<ObjectBase, "id" | "type">
 ): Promise<Actor> {
   const id = `${did}/actor`;
@@ -133,8 +133,7 @@ export async function newActor(
     followers,
     ...members,
   };
-  if (key) return await sign(actor, key);
-  return actor;
+  return await sign(actor, key);
 }
 
 export function didFromActorId(actorId: string): string | undefined {
