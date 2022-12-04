@@ -348,13 +348,20 @@ export class ChatterNet {
    *   actor followers and followers of the listened actor if none is provided
    * @returns the message and object to send
    */
-  async newListenServer(did: string, url: string, audience?: string[]): Promise<MessageObjectDoc> {
-    const actorFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(this.getLocalDid()));
-    const idFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(did));
-    audience = audience ? audience : [actorFollowers, idFollowers];
-    const server = await Messages.newActor(did, "Service", undefined, { url });
-    const message = await this.newMessage([server.id], "Listen", audience);
-    return { message, objects: [server] };
+  async newListenServer(
+    did: string,
+    url: string,
+    audience?: string[]
+  ): Promise<Messages.MessageWithId> {
+    const actorDid = this.getLocalDid();
+    const actorActorId = ChatterNet.actorFromDid(actorDid);
+    const actorFollowers = ChatterNet.followersFromId(actorActorId);
+    audience = audience ? audience : [actorFollowers];
+    const serverActorId = ChatterNet.actorFromDid(did);
+    return await Messages.newMessage(actorDid, [serverActorId], "Listen", null, this.key, {
+      instrument: { type: "Link", href: url },
+      audience,
+    });
   }
 
   /**
@@ -376,14 +383,14 @@ export class ChatterNet {
     audience?: string[]
   ): Promise<Messages.MessageWithId | undefined> {
     // don't view messages from self
-    const did = this.getLocalDid();
-    const actorId = ChatterNet.actorFromDid(did);
+    const actorDid = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(actorDid);
     if (message.actor === actorId) return;
     // don't view indirect messages
     if (message.type === "View") return;
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
-    const view = await Messages.newMessage(did, message.object, "View", null, this.key, {
+    const view = await Messages.newMessage(actorDid, message.object, "View", null, this.key, {
       origin: message.id,
       audience,
     });
