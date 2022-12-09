@@ -31,7 +31,14 @@ describe("messages", () => {
     assert.ok(!isObjectDocWithId(omit(objectDoc, "type")));
   });
 
-  it("builds and verifies an object with invalid ID", async () => {
+  it("builds and verifies an object", async () => {
+    const objectDoc = await Messages.newObjectDoc("Note", {
+      content: "abc",
+    });
+    assert.ok(await Messages.verifyObjectDoc(objectDoc));
+  });
+
+  it("doesnt verify an object with invalid content", async () => {
     const objectDoc = await Messages.newObjectDoc("Note", {
       content: "abc",
     });
