@@ -69,8 +69,8 @@ export async function newObjectDoc(
 }
 
 export async function verifyObjectDoc(objectDoc: ObjectDoc): Promise<boolean> {
-  let objectDocForId = omit(objectDoc, ["id"]);
-  let cid = (await buildDocCid(objectDocForId)).toString();
+  const objectDocNoId = omit(objectDoc, ["id"]);
+  const cid = (await buildDocCid(objectDocNoId)).toString();
   if (`urn:cid:${cid}` !== objectDoc.id) return false;
   return true;
 }

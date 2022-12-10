@@ -258,13 +258,20 @@ export class ChatterNet {
   /**
    * Post a message and any of its provided objects to the servers.
    *
-   * @param messageObjectDoc
+   * @param messageObjectDoc the message and associated objects to post
    */
   async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
-    // TODO: collect errors and make available
-    // TODO: send only to servers that accepted message
     await this.servers.postMessage(messageObjectDoc.message, this.getLocalDid());
-    for (const objectDoc of messageObjectDoc.objects) await this.servers.postObjectDoc(objectDoc);
+    for (const objectDoc of messageObjectDoc.objects) await this.postObjectDoc(objectDoc);
+  }
+
+  /**
+   * Post an object.
+   *
+   * @param objectDoc the object to post
+   */
+  async postObjectDoc(objectDoc: Messages.ObjectDocWithId) {
+    await this.servers.postObjectDoc(objectDoc);
   }
 
   /**
