@@ -101,20 +101,13 @@ describe("storage", () => {
       await db.message.put("id:a");
       await db.message.put("id:b");
       await db.message.put("id:c");
-      assert.deepEqual(await db.message.getPage(undefined, 3), ["id:c", "id:b", "id:a"]);
-      assert.deepEqual(await db.message.getPage(undefined, 2), ["id:c", "id:b"]);
-    });
-
-    it("gets message ids after", async () => {
-      const db = await Storage.DbPeer.new();
-      await db.clear();
-      await db.message.put("id:a");
-      await db.message.put("id:b");
-      await db.message.put("id:c");
-      assert.deepEqual(await db.message.getPage("id:c", 3), ["id:b", "id:a"]);
-      assert.deepEqual(await db.message.getPage("id:b", 3), ["id:a"]);
-      assert.deepEqual(await db.message.getPage("id:a", 3), []);
-      assert.deepEqual(await db.message.getPage("id:x", 3), []);
+      let out1 = await db.message.getPage(undefined, 2);
+      assert.deepEqual(out1.ids, ["id:c", "id:b"]);
+      let out2 = await db.message.getPage(out1.nextStartIdx, 2);
+      assert.deepEqual(out2.ids, ["id:a"]);
+      let out3 = await db.message.getPage(out2.nextStartIdx, 2);
+      assert.deepEqual(out3.ids, []);
+      assert.equal(out3.nextStartIdx, null);
     });
 
     it("puts and gets object doc", async () => {

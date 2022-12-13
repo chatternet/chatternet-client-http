@@ -8,6 +8,11 @@ export interface Server {
   knownIds: Set<string>;
 }
 
+export interface InboxOut {
+  messages: Messages.MessageWithId[];
+  nextStartIdx?: number;
+}
+
 export function newServer(info: ServerInfo): Server {
   const knownIds: Set<string> = new Set();
   return { ...info, knownIds };
@@ -39,10 +44,10 @@ async function postObjectDoc(objetDoc: Messages.ObjectDoc, serverUrl: string): P
   return await fetch(request);
 }
 
-async function getInbox(did: string, serverUrl: string, after?: string): Promise<Response> {
+async function getInbox(did: string, serverUrl: string, startIdx?: number): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
   const url = new URL(`${serverUrl}/ap/${did}/actor/inbox`);
-  if (after) url.searchParams.set("after", after);
+  if (startIdx) url.searchParams.set("startIdx", startIdx.toString());
   const request = new Request(url, {
     method: "GET",
   });
@@ -125,12 +130,21 @@ export class Servers {
     }
   }
 
-  async getInbox(url: string, did: string, after?: string): Promise<Messages.MessageWithId[]> {
+  static getNextStartIdxFromPage(page: any): number | undefined {
+    const next = get(page, "next");
+    if (next == null) return;
+    const startIdx = new URL(next).searchParams.get("startIdx");
+    if (startIdx == null) return;
+    return +startIdx;
+  }
+
+  async getInbox(url: string, did: string, startIdx?: number): Promise<InboxOut> {
     const server = this.urlsServer.get(url);
     if (!server) throw Error("server URL is not known");
-    const response = await getInbox(did, url, after);
+    const response = await getInbox(did, url, startIdx);
     if (!response.ok) throw Error("unable to get inbox");
     const page: unknown = await response.json();
+    const nextStartIdx = Servers.getNextStartIdxFromPage(page);
     const messages: unknown = get(page, "items");
     if (!Array.isArray(messages)) throw Error("inbox message are incorrectly formatted");
     const messagesWithId = messages.filter(Messages.isMessageWithId);
@@ -139,6 +153,6 @@ export class Servers {
     const messagesValid: Messages.MessageWithId[] = [];
     for (const message of messagesWithId)
       if (await Messages.verifyMessage(message)) messagesValid.push(message);
-    return messagesValid;
+    return { messages: messagesValid, nextStartIdx };
   }
 }
