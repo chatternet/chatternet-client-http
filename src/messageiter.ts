@@ -1,20 +1,23 @@
 import type * as Messages from "./messages.js";
-import type { Servers } from "./servers.js";
+import type { InboxOut, Servers } from "./servers.js";
 import type { DbPeer } from "./storage.js";
 
 interface ServerCursor {
   url: string;
   did: string;
-  cursor: string | undefined;
+  startIdx: number | undefined;
+  exhausted: boolean;
 }
 
 export class MessageIter {
   private numCycles: number = 0;
-  private localCursor: string | undefined = undefined;
+  private localIdx: number | undefined = undefined;
+  private localExhausted: boolean = false;
 
   constructor(
     readonly did: string,
     readonly servers: Servers,
+    // TODO: page size
     readonly serverCursors: ServerCursor[],
     readonly dbPeer: DbPeer,
     readonly messagesId: Set<string>
@@ -24,7 +27,8 @@ export class MessageIter {
     const cursors = [...servers.urlsServer.values()].map((x) => ({
       url: x.url,
       did,
-      cursor: undefined,
+      startIdx: undefined,
+      exhausted: false,
     }));
     return new MessageIter(did, servers, cursors, dbPeer, new Set());
   }
@@ -36,39 +40,42 @@ export class MessageIter {
   async *messages(): AsyncGenerator<Messages.MessageWithId> {
     this.numCycles = 0;
     while (true) {
-      let yielded = false;
-
       // get from local first
-      for (const messageId of await this.dbPeer.message.getPage(this.localCursor)) {
-        if (this.messagesId.has(messageId)) continue;
-        // db stores message IDs separate from message object
-        const message = (await this.dbPeer.objectDoc.get(messageId)) as Messages.MessageWithId;
-        if (!message) continue;
-        this.messagesId.add(messageId);
-        this.localCursor = messageId;
-        yielded = true;
-        yield message;
+      if (!this.localExhausted) {
+        let pageOut = await this.dbPeer.message.getPage(this.localIdx);
+        if (pageOut.nextStartIdx == null || pageOut.ids.length <= 0) this.localExhausted = true;
+        this.localIdx = pageOut.nextStartIdx;
+        for (const messageId of pageOut.ids) {
+          if (this.messagesId.has(messageId)) continue;
+          // db stores message IDs separate from message object
+          const message = (await this.dbPeer.objectDoc.get(messageId)) as Messages.MessageWithId;
+          if (!message) continue;
+          this.messagesId.add(messageId);
+          yield message;
+        }
       }
 
       // then get messages from servers
       const numServers = this.serverCursors.length;
       for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
-        const { url, did, cursor } = this.serverCursors[serverIdx];
-        let inbox: Messages.MessageWithId[] = [];
+        const { url, did, startIdx: cursor, exhausted } = this.serverCursors[serverIdx];
+        if (exhausted) continue;
+        let inboxOut: InboxOut | undefined = undefined;
         try {
-          inbox = await this.servers.getInbox(url, did, cursor);
+          inboxOut = await this.servers.getInbox(url, did, cursor);
         } catch {}
-        for (const message of inbox) {
+        if (inboxOut == null) continue;
+        if (inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0) this.serverCursors[serverIdx].exhausted = true;
+        this.serverCursors[serverIdx].startIdx = inboxOut.nextStartIdx;
+        for (const message of inboxOut.messages) {
           if (this.messagesId.has(message.id)) continue;
           this.messagesId.add(message.id);
-          this.serverCursors[serverIdx].cursor = message.id;
-          yielded = true;
           yield message;
         }
       }
 
       this.numCycles += 1;
-      if (!yielded) break;
+      if (this.localExhausted && this.serverCursors.every((x) => x.exhausted)) break;
     }
   }
 }

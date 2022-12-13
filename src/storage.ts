@@ -243,7 +243,12 @@ class StoreFollow {
 
 interface RecordMessageId {
   id: string;
-  idx?: number;
+  idx: number;
+}
+
+interface PageOut {
+  ids: string[],
+  nextStartIdx?: number,
 }
 
 class StoreMessage {
@@ -262,25 +267,22 @@ class StoreMessage {
 
   async put(id: string) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const record: RecordMessageId = { id };
-    await transaction.store.put(record);
+    await transaction.store.put({ id });
   }
 
-  async getPage(after?: string, pageSize: number = 32): Promise<string[]> {
+  async getPage(startIdx?: number, pageSize: number = 32): Promise<PageOut> {
     const transaction = this.db.transaction(this.name, "readwrite");
-    let query = null;
-    if (after != null) {
-      const cursor = await transaction.store.index("id").getKey(after);
-      if (!cursor) return [];
-      query = IDBKeyRange.upperBound(cursor, true);
-    }
+    let query = startIdx != null ? IDBKeyRange.upperBound(startIdx, false) : undefined;
+    let nextStartIdx: number | undefined = undefined;
     const ids: string[] = [];
     for await (const cursor of transaction.store.iterate(query, "prevunique")) {
       const record: RecordMessageId = cursor.value;
       ids.push(record.id);
+      nextStartIdx = nextStartIdx ? Math.min(record.idx, nextStartIdx) : record.idx;
       if (ids.length >= pageSize) break;
     }
-    return ids;
+    nextStartIdx = nextStartIdx != null && nextStartIdx > 0 ? nextStartIdx - 1 : undefined;
+    return { ids, nextStartIdx };
   }
 }
 
