@@ -11,19 +11,19 @@ describe("message iter", () => {
     const actorDid = DidKey.didFromKey(key);
 
     const messagesA = [
-      await Messages.newMessage(actorDid, ["urn:cid:a3"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:a2"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:a1"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:a"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:b"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:c"], "Create", null, key),
     ];
 
     const messagesB = [
       messagesA[0],
-      await Messages.newMessage(actorDid, ["urn:cid:b1"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:d"], "Create", null, key),
     ];
 
     const messagesLocal = [
-      await Messages.newMessage(actorDid, ["urn:cid:l1"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:l2"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:e"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:f"], "Create", null, key),
     ];
 
     const dbPeer = await DbPeer.new();
@@ -36,23 +36,22 @@ describe("message iter", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ]);
-    servers.getInbox = async (url: string, did: string, startIdx?: number) => {
+    servers.getInbox = async (url: string, did: string, after?: string) => {
       if (url === "http://a.example") {
         if (did === actorDid) {
-          if (startIdx === 1 || startIdx == null)
-            return { messages: messagesA.slice(0, 2), nextStartIdx: 3 };
-          else if (startIdx === 2) return { messages: messagesA.slice(1, 1 + 2) };
-          else if (startIdx === 3) return { messages: messagesA.slice(2, 2 + 2) };
-          else return { messages: [] };
+          if (after == null) return messagesA.slice(0, 2);
+          else if (after === messagesA[1].id) return messagesA.slice(1, 1 + 2);
+          else if (after === messagesA[2].id) return messagesA.slice(2, 2 + 2);
+          else return [];
         } else {
-          return { messages: [] };
+          return [];
         }
       } else if (url === "http://b.example") {
         if (did === actorDid) {
-          if (startIdx === 1 || startIdx == null) return { messages: messagesB.slice(0, 2) };
-          else return { messages: [] };
+          if (after == null) return messagesB;
+          else return [];
         } else {
-          return { messages: [] };
+          return [];
         }
       } else throw Error("server URL is not known");
     };
@@ -69,16 +68,16 @@ describe("message iter", () => {
       objectsIds.map((x, i) => [x, numCycles[i]]),
       [
         // local messages first in reverse order
-        ["urn:cid:l2", 0],
-        ["urn:cid:l1", 0],
+        ["urn:cid:f", 0],
+        ["urn:cid:e", 0],
         // first page of server a (order sent by server)
-        ["urn:cid:a3", 0],
-        ["urn:cid:a2", 0],
+        ["urn:cid:a", 0],
+        ["urn:cid:b", 0],
         // only page of server b (order sent by server)
-        ["urn:cid:b1", 0],
+        ["urn:cid:d", 0],
         // second page of server a (order sent by server)
         // num cycles increases due to first full cycle
-        ["urn:cid:a1", 1],
+        ["urn:cid:c", 1],
       ]
     );
   });

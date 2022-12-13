@@ -165,8 +165,8 @@ describe("servers", () => {
     };
     const servers = await Servers.fromInfos(infos);
     const returnedMessages = await servers.getInbox("http://a.example", did);
-    assert.equal(message1.id, returnedMessages.messages[0].id);
-    assert.equal(message2.id, returnedMessages.messages[1].id);
+    assert.equal(message1.id, returnedMessages[0].id);
+    assert.equal(message2.id, returnedMessages[1].id);
   });
 
   it("doesnt get inbox invalid messages", async () => {
@@ -191,6 +191,6 @@ describe("servers", () => {
     };
     const servers = await Servers.fromInfos(infos);
     const returnedMessages = await servers.getInbox("http://a.example", did);
-    assert.equal(message2.id, returnedMessages.messages[0].id);
+    assert.equal(message2.id, returnedMessages[0].id);
   });
 });

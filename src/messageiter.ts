@@ -1,17 +1,15 @@
 import type * as Messages from "./messages.js";
-import type { InboxOut, Servers } from "./servers.js";
+import type { Servers } from "./servers.js";
 import type { DbPeer } from "./storage.js";
 
 interface ServerCursor {
   url: string;
   did: string;
-  startIdx: number | undefined;
-  exhausted: boolean;
+  cursor: string | undefined;
 }
 
 export class MessageIter {
   private numCycles: number = 0;
-  // TODO fix
   private localCursor: string | undefined = undefined;
 
   constructor(
@@ -26,8 +24,7 @@ export class MessageIter {
     const cursors = [...servers.urlsServer.values()].map((x) => ({
       url: x.url,
       did,
-      startIdx: undefined,
-      exhausted: false,
+      cursor: undefined,
     }));
     return new MessageIter(did, servers, cursors, dbPeer, new Set());
   }
@@ -56,18 +53,15 @@ export class MessageIter {
       // then get messages from servers
       const numServers = this.serverCursors.length;
       for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
-        const { url, did, startIdx: cursor, exhausted } = this.serverCursors[serverIdx];
-        if (exhausted) continue;
-        let inboxOut: InboxOut | undefined = undefined;
+        const { url, did, cursor } = this.serverCursors[serverIdx];
+        let inbox: Messages.MessageWithId[] = [];
         try {
-          inboxOut = await this.servers.getInbox(url, did, cursor);
+          inbox = await this.servers.getInbox(url, did, cursor);
         } catch {}
-        if (inboxOut == null) continue;
-        if (inboxOut.nextStartIdx == null) this.serverCursors[serverIdx].exhausted = true;
-        this.serverCursors[serverIdx].startIdx = inboxOut.nextStartIdx;
-        for (const message of inboxOut.messages) {
+        for (const message of inbox) {
           if (this.messagesId.has(message.id)) continue;
           this.messagesId.add(message.id);
+          this.serverCursors[serverIdx].cursor = message.id;
           yielded = true;
           yield message;
         }
