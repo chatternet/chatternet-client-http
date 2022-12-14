@@ -17,20 +17,20 @@ export class MessageIter {
   constructor(
     readonly did: string,
     readonly servers: Servers,
-    // TODO: page size
-    readonly serverCursors: ServerCursor[],
     readonly dbPeer: DbPeer,
+    readonly pageSize: number,
+    readonly serverCursors: ServerCursor[],
     readonly messagesId: Set<string>
   ) {}
 
-  static async new(did: string, servers: Servers, dbPeer: DbPeer): Promise<MessageIter> {
+  static async new(did: string, servers: Servers, dbPeer: DbPeer, pageSize: number): Promise<MessageIter> {
     const cursors = [...servers.urlsServer.values()].map((x) => ({
       url: x.url,
       did,
       startIdx: undefined,
       exhausted: false,
     }));
-    return new MessageIter(did, servers, cursors, dbPeer, new Set());
+    return new MessageIter(did, servers, dbPeer, pageSize, cursors, new Set());
   }
 
   getNumCycles(): number {
@@ -42,7 +42,7 @@ export class MessageIter {
     while (true) {
       // get from local first
       if (!this.localExhausted) {
-        let pageOut = await this.dbPeer.message.getPage(this.localIdx);
+        let pageOut = await this.dbPeer.message.getPage(this.localIdx, this.pageSize);
         if (pageOut.nextStartIdx == null || pageOut.ids.length <= 0) this.localExhausted = true;
         this.localIdx = pageOut.nextStartIdx;
         for (const messageId of pageOut.ids) {
@@ -58,11 +58,11 @@ export class MessageIter {
       // then get messages from servers
       const numServers = this.serverCursors.length;
       for (let serverIdx = 0; serverIdx < numServers; serverIdx++) {
-        const { url, did, startIdx: cursor, exhausted } = this.serverCursors[serverIdx];
+        const { url, did, startIdx, exhausted } = this.serverCursors[serverIdx];
         if (exhausted) continue;
         let inboxOut: InboxOut | undefined = undefined;
         try {
-          inboxOut = await this.servers.getInbox(url, did, cursor);
+          inboxOut = await this.servers.getInbox(url, did, startIdx, this.pageSize);
         } catch {}
         if (inboxOut == null) continue;
         if (inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0) this.serverCursors[serverIdx].exhausted = true;

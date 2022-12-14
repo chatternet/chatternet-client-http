@@ -474,7 +474,7 @@ export class ChatterNet {
    * @returns the message iterator
    */
   async buildMessageIter(): Promise<MessageIter> {
-    return await MessageIter.new(this.getLocalDid(), this.servers, this.dbs.peer);
+    return await MessageIter.new(this.getLocalDid(), this.servers, this.dbs.peer, 32);
   }
 
   /**
