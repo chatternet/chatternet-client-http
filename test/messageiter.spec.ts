@@ -11,45 +11,52 @@ describe("message iter", () => {
     const actorDid = DidKey.didFromKey(key);
 
     const messagesA = [
-      await Messages.newMessage(actorDid, ["urn:cid:a3"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:a2"], "Create", null, key),
       await Messages.newMessage(actorDid, ["urn:cid:a1"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:a2"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:a3"], "Create", null, key),
     ];
 
     const messagesB = [
-      messagesA[0],
+      messagesA[2],
       await Messages.newMessage(actorDid, ["urn:cid:b1"], "Create", null, key),
     ];
 
     const messagesLocal = [
       await Messages.newMessage(actorDid, ["urn:cid:l1"], "Create", null, key),
       await Messages.newMessage(actorDid, ["urn:cid:l2"], "Create", null, key),
+      await Messages.newMessage(actorDid, ["urn:cid:l3"], "Create", null, key),
     ];
 
     const dbPeer = await DbPeer.new();
-    await dbPeer.objectDoc.put(messagesLocal[0]);
-    await dbPeer.message.put(messagesLocal[0].id);
-    await dbPeer.objectDoc.put(messagesLocal[1]);
-    await dbPeer.message.put(messagesLocal[1].id);
+    for (const messageLocal of messagesLocal) {
+      await dbPeer.objectDoc.put(messageLocal);
+      await dbPeer.message.put(messageLocal.id);
+    }
 
     const servers = Servers.fromInfos([
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ]);
-    servers.getInbox = async (url: string, did: string, startIdx?: number) => {
+    servers.getInbox = async (url: string, did: string, startIdx?: number, pageSize?: number) => {
+      pageSize = pageSize ? pageSize : 1;
       if (url === "http://a.example") {
         if (did === actorDid) {
-          if (startIdx === 1 || startIdx == null)
-            return { messages: messagesA.slice(0, 2), nextStartIdx: 3 };
-          else if (startIdx === 2) return { messages: messagesA.slice(1, 1 + 2) };
-          else if (startIdx === 3) return { messages: messagesA.slice(2, 2 + 2) };
+          startIdx = startIdx ? startIdx : 3;
+          const nextStartIdx = startIdx - pageSize > 0 ? startIdx - pageSize : undefined;
+          if (startIdx === 3)
+            return { messages: [...messagesA].reverse().slice(0, pageSize), nextStartIdx };
+          else if (startIdx === 2)
+            return { messages: [...messagesA].reverse().slice(1, 1 + pageSize), nextStartIdx };
+          else if (startIdx === 1)
+            return { messages: [...messagesA].reverse().slice(2, 2 + pageSize), nextStartIdx };
           else return { messages: [] };
         } else {
           return { messages: [] };
         }
       } else if (url === "http://b.example") {
         if (did === actorDid) {
-          if (startIdx === 1 || startIdx == null) return { messages: messagesB.slice(0, 2) };
+          startIdx = startIdx ? startIdx : 1;
+          if (startIdx === 1) return { messages: messagesB.slice(0, pageSize) };
           else return { messages: [] };
         } else {
           return { messages: [] };
@@ -57,7 +64,7 @@ describe("message iter", () => {
       } else throw Error("server URL is not known");
     };
 
-    const messageIter = await MessageIter.new(actorDid, servers, dbPeer);
+    const messageIter = await MessageIter.new(actorDid, servers, dbPeer, 2);
     const messages: Messages.MessageWithId[] = [];
     const numCycles: number[] = [];
     for await (const message of messageIter.messages()) {
@@ -69,8 +76,8 @@ describe("message iter", () => {
       objectsIds.map((x, i) => [x, numCycles[i]]),
       [
         // local messages first in reverse order
+        ["urn:cid:l3", 0],
         ["urn:cid:l2", 0],
-        ["urn:cid:l1", 0],
         // first page of server a (order sent by server)
         ["urn:cid:a3", 0],
         ["urn:cid:a2", 0],
@@ -78,6 +85,7 @@ describe("message iter", () => {
         ["urn:cid:b1", 0],
         // second page of server a (order sent by server)
         // num cycles increases due to first full cycle
+        ["urn:cid:l1", 1],
         ["urn:cid:a1", 1],
       ]
     );
