@@ -265,6 +265,13 @@ class StoreMessage {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
+  async delete(id: string): Promise<void> {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const key = await transaction.store.index("id").getKey(id);
+    if (key == null) return;
+    await transaction.store.delete(key);
+  }
+
   async put(id: string) {
     const transaction = this.db.transaction(this.name, "readwrite");
     await transaction.store.put({ id });
@@ -308,6 +315,11 @@ class StoreObjectDoc {
     const transaction = this.db.transaction(this.name, "readonly");
     const record: RecordObjectDoc | undefined = await transaction.store.get(id);
     return !!record ? record.objectDoc : undefined;
+  }
+
+  async delete(id: string): Promise<void> {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    await transaction.store.delete(id);
   }
 
   async put(objectDoc: Messages.ObjectDocWithId) {

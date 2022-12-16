@@ -256,6 +256,16 @@ export class ChatterNet {
   }
 
   /**
+   * Remove a message from the local store if present.
+   *
+   * @param messageId the message ID to remove
+   */
+  async unstoreMessages(messageId: string): Promise<void> {
+    await this.dbs.peer.message.delete(messageId);
+    await this.dbs.peer.objectDoc.delete(messageId);
+  }
+
+  /**
    * Post a message and any of its provided objects to the servers.
    *
    * @param messageObjectDoc the message and associated objects to post
@@ -294,6 +304,23 @@ export class ChatterNet {
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
     return await Messages.newMessage(did, ids, type, null, this.key, { audience });
+  }
+
+  /**
+   * Builds and signs a message indicating that another should be deleted.
+   *
+   * This is a local operation.
+   *
+   * @param ids list of message objects IDs
+   * @param audience audiences to address the message to, defaults to local
+   *   actor followers if none is provided
+   * @returns the signed message
+   */
+  async newDelete(
+    messageId: string,
+    audience?: string[]
+  ): Promise<Messages.MessageWithId> {
+    return await this.newMessage([messageId], "Delete", audience);
   }
 
   /**

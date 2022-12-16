@@ -95,7 +95,7 @@ describe("storage", () => {
       assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:b"]);
     });
 
-    it("puts and gets message ids", async () => {
+    it("puts gets deletes message ids", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       await db.message.put("id:a");
@@ -108,9 +108,13 @@ describe("storage", () => {
       let out3 = await db.message.getPage(out2.nextStartIdx, 2);
       assert.deepEqual(out3.ids, []);
       assert.equal(out3.nextStartIdx, null);
+      await db.message.delete("id:c");
+      await db.message.delete("id:d");
+      let out4 = await db.message.getPage(undefined, 2);
+      assert.deepEqual(out4.ids, ["id:b", "id:a"]);
     });
 
-    it("puts and gets object doc", async () => {
+    it("puts gets deletes object doc", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       const objectDoc1 = await Messages.newObjectDoc("Note", { content: "abc" });
@@ -120,6 +124,8 @@ describe("storage", () => {
       await db.objectDoc.put(objectDoc2);
       assert.deepEqual(await db.objectDoc.get(objectDoc1.id), objectDoc1);
       assert.deepEqual(await db.objectDoc.get(objectDoc2.id), objectDoc2);
+      await db.objectDoc.delete(objectDoc1.id);
+      assert.ok(!(await db.objectDoc.get(objectDoc1.id)));
     });
 
     it("puts and gets view messages", async () => {

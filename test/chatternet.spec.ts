@@ -93,6 +93,15 @@ describe("chatter net", () => {
     assert.equal(objects[0].content, "abcd");
   });
 
+  it("builds a delete message", async () => {
+    await ChatterNet.clearDbs();
+    const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
+    const message = await chatterNet.newDelete("id:a");
+    assert.equal(message.type, "Delete");
+    assert.deepEqual(message.object, ["id:a"]);
+  });
+
   it("adds follow and builds follows", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
@@ -265,6 +274,26 @@ describe("chatter net", () => {
     // iterates own message
     const messages1 = await listMessages(await chatterNet1.buildMessageIter());
     assert.ok(new Set(messages1.map((x) => x.id)).has(note.message.id));
+  });
+
+  it("unstores local message", async () => {
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", []);
+    // did1 posts
+    const note = await chatterNet1.newNote("Hi!");
+    await chatterNet1.storeMessageObjectDoc(note);
+    // can retrieve message
+    assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
+    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 2);
+    // removes message
+    await chatterNet1.unstoreMessages(note.message.id);
+    // can no longer retrieve message object
+    assert.ok(!(await chatterNet1.getObjectDoc(note.message.id)));
+    // assert.ok(!await chatterNet1.getObjectDoc(note.objects[0].id));
+    // no longer iterates message
+    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 1);
   });
 
   it("builds message affinity", async () => {
