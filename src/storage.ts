@@ -364,6 +364,49 @@ class StoreViewMessage {
   }
 }
 
+interface RecordMessageBody {
+  jointId: string;
+  messageId: string;
+  bodyId: string;
+}
+
+/**
+ * Stores a single view message for any object ID.
+ */
+class StoreMessageBody {
+  static DEFAULT_NAME = "MessageBody";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreMessageBody.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreMessageBody.DEFAULT_NAME) {
+    const store = db.createObjectStore(name, { keyPath: "jointId" });
+    store.createIndex("bodyId", "bodyId");
+    return new StoreMessageBody(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async hasMessageWithBody(bodyId: string): Promise<boolean> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return await transaction.store.index("bodyId").count(bodyId) > 0;
+  }
+
+  async delete(messageId: string, bodyId: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const jointId = JSON.stringify([messageId, bodyId]);
+    await transaction.store.delete(jointId);
+  }
+
+  async put(messageId: string, bodyId: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const jointId = JSON.stringify([messageId, bodyId]);
+    const record: RecordMessageBody = { jointId, messageId, bodyId };
+    await transaction.store.put(record);
+  }
+}
+
 export class DbDevice {
   static DEFAULT_NAME = "Device";
 
@@ -407,6 +450,7 @@ export class DbPeer {
     readonly follow: StoreFollow,
     readonly message: StoreMessage,
     readonly objectDoc: StoreObjectDoc,
+    readonly messageBody: StoreMessageBody,
     readonly viewMessage: StoreViewMessage
   ) {}
 
@@ -415,6 +459,7 @@ export class DbPeer {
     let storeFollow: StoreFollow | undefined = undefined;
     let storeMessage: StoreMessage | undefined = undefined;
     let storeObjectDoc: StoreObjectDoc | undefined = undefined;
+    let storeMessageBody: StoreMessageBody | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
@@ -422,6 +467,7 @@ export class DbPeer {
         storeFollow = StoreFollow.create(db);
         storeMessage = StoreMessage.create(db);
         storeObjectDoc = StoreObjectDoc.create(db);
+        storeMessageBody = StoreMessageBody.create(db);
         storeViewMessage = StoreViewMessage.create(db);
       },
     });
@@ -429,8 +475,9 @@ export class DbPeer {
     storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
     storeMessage = storeMessage ? storeMessage : new StoreMessage(db);
     storeObjectDoc = storeObjectDoc ? storeObjectDoc : new StoreObjectDoc(db);
+    storeMessageBody = storeMessageBody ? storeMessageBody : new StoreMessageBody(db);
     storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
-    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc, storeViewMessage);
+    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc, storeMessageBody, storeViewMessage);
   }
 
   async clear() {

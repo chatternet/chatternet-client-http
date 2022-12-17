@@ -252,7 +252,10 @@ export class ChatterNet {
   async storeMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
     await this.dbs.peer.message.put(messageObjectDoc.message.id);
     await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
-    for (const objectDoc of messageObjectDoc.objects) await this.dbs.peer.objectDoc.put(objectDoc);
+    for (const objectDoc of messageObjectDoc.objects) {
+      await this.dbs.peer.objectDoc.put(objectDoc);
+      await this.dbs.peer.messageBody.put(messageObjectDoc.message.id, objectDoc.id);
+    }
   }
 
   /**

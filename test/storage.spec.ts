@@ -128,6 +128,21 @@ describe("storage", () => {
       assert.ok(!(await db.objectDoc.get(objectDoc1.id)));
     });
 
+    it("puts has deletes message body", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      await db.messageBody.put("id:m1", "id:b1");
+      await db.messageBody.put("id:m2", "id:b1");
+      await db.messageBody.put("id:m3", "id:b2");
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b2"));
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b3")));
+      await db.messageBody.delete("id:m1", "id:b1");
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
+      await db.messageBody.delete("id:m2", "id:b1");
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b1")));
+    });
+
     it("puts and gets view messages", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
