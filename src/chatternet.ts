@@ -266,6 +266,12 @@ export class ChatterNet {
   async unstoreMessages(messageId: string): Promise<void> {
     await this.dbs.peer.message.delete(messageId);
     await this.dbs.peer.objectDoc.delete(messageId);
+    const bodiesId = await this.dbs.peer.messageBody.getBodiesForMessage(messageId);
+    this.dbs.peer.messageBody.deleteForMessage(messageId);
+    for (const bodyId of bodiesId) {
+      if (await this.dbs.peer.messageBody.hasMessageWithBody(bodyId)) continue;
+      this.dbs.peer.objectDoc.delete(bodyId);
+    }
   }
 
   /**

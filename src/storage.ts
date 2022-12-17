@@ -381,6 +381,7 @@ class StoreMessageBody {
   static create(db: IDBPDatabase, name: string = StoreMessageBody.DEFAULT_NAME) {
     const store = db.createObjectStore(name, { keyPath: "jointId" });
     store.createIndex("bodyId", "bodyId");
+    store.createIndex("messageId", "messageId");
     return new StoreMessageBody(db, name);
   }
 
@@ -391,6 +392,17 @@ class StoreMessageBody {
   async hasMessageWithBody(bodyId: string): Promise<boolean> {
     const transaction = this.db.transaction(this.name, "readonly");
     return await transaction.store.index("bodyId").count(bodyId) > 0;
+  }
+
+  async getBodiesForMessage(messageId: string): Promise<string[]> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return (await transaction.store.index("messageId").getAll(messageId)).map((x) => x.bodyId)
+  }
+
+  async deleteForMessage(messageId: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const keys = await transaction.store.index("messageId").getAllKeys(messageId);
+    for (const key of keys) transaction.store.delete(key);
   }
 
   async delete(messageId: string, bodyId: string) {

@@ -291,7 +291,7 @@ describe("chatter net", () => {
     await chatterNet1.unstoreMessages(note.message.id);
     // can no longer retrieve message object
     assert.ok(!(await chatterNet1.getObjectDoc(note.message.id)));
-    // assert.ok(!await chatterNet1.getObjectDoc(note.objects[0].id));
+    assert.ok(!(await chatterNet1.getObjectDoc(note.objects[0].id)));
     // no longer iterates message
     assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 1);
   });
