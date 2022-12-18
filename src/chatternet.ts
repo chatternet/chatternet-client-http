@@ -327,7 +327,8 @@ export class ChatterNet {
   }
 
   /**
-   * Builds and signs a message indicating that another should be deleted.
+   * Builds and signs a message indicating that another should be deleted. The
+   * message to delete must be stored locally and be from the local actor.
    *
    * This is a local operation.
    *
@@ -336,7 +337,15 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newDelete(messageId: string, audience?: string[]): Promise<Messages.MessageWithId> {
+  async newDelete(
+    messageId: string,
+    audience?: string[]
+  ): Promise<Messages.MessageWithId | undefined> {
+    const message = await this.dbs.peer.objectDoc.get(messageId);
+    const actorId = ChatterNet.actorFromDid(this.getLocalDid());
+    if (!message) return;
+    if (!Messages.isMessageWithId(message)) return;
+    if (message.actor != actorId) return;
     return await this.newMessage([messageId], "Delete", audience);
   }
 

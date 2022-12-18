@@ -95,11 +95,29 @@ describe("chatter net", () => {
 
   it("builds a delete message", async () => {
     await ChatterNet.clearDbs();
-    const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
-    const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const message = await chatterNet.newDelete("id:a");
-    assert.equal(message.type, "Delete");
-    assert.deepEqual(message.object, ["id:a"]);
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const messageObjectDoc = await chatterNet1.newNote("abcd");
+    // cannot delete a message which is not yet known
+    assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
+    // if local has message, it can be deleted
+    await chatterNet1.storeMessageObjectDoc(messageObjectDoc);
+    const deleteMessage = await chatterNet1.newDelete(messageObjectDoc.message.id);
+    assert.ok(deleteMessage);
+    assert.equal(deleteMessage.type, "Delete");
+    assert.deepEqual(deleteMessage.object, [messageObjectDoc.message.id]);
+  });
+
+  it("doesnt build delete message for other actor", async () => {
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    const messageObjectDoc = await chatterNet2.newNote("abcd");
+    await chatterNet1.storeMessageObjectDoc(messageObjectDoc);
+    // cannot delete a message with different actor
+    assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
   });
 
   it("adds follow and builds follows", async () => {
