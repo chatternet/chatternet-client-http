@@ -247,8 +247,8 @@ interface RecordMessageId {
 }
 
 interface PageOut {
-  ids: string[],
-  nextStartIdx?: number,
+  ids: string[];
+  nextStartIdx?: number;
 }
 
 class StoreMessage {
@@ -391,12 +391,12 @@ class StoreMessageBody {
 
   async hasMessageWithBody(bodyId: string): Promise<boolean> {
     const transaction = this.db.transaction(this.name, "readonly");
-    return await transaction.store.index("bodyId").count(bodyId) > 0;
+    return (await transaction.store.index("bodyId").count(bodyId)) > 0;
   }
 
   async getBodiesForMessage(messageId: string): Promise<string[]> {
     const transaction = this.db.transaction(this.name, "readonly");
-    return (await transaction.store.index("messageId").getAll(messageId)).map((x) => x.bodyId)
+    return (await transaction.store.index("messageId").getAll(messageId)).map((x) => x.bodyId);
   }
 
   async deleteForMessage(messageId: string) {
@@ -416,6 +416,41 @@ class StoreMessageBody {
     const jointId = JSON.stringify([messageId, bodyId]);
     const record: RecordMessageBody = { jointId, messageId, bodyId };
     await transaction.store.put(record);
+  }
+}
+
+/**
+ * Stores unique document IDs.
+ */
+class StoreDocumentId {
+  static DEFAULT_NAME = "DocumentId";
+
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreDocumentId.DEFAULT_NAME) {}
+
+  static create(db: IDBPDatabase, name: string = StoreDocumentId.DEFAULT_NAME) {
+    // store plain IDs, specify ID as key when putting, so no key path here
+    db.createObjectStore(name);
+    return new StoreDocumentId(db, name);
+  }
+
+  async clear() {
+    await this.db.transaction(this.name, "readwrite").store.clear();
+  }
+
+  async hasId(id: string): Promise<boolean> {
+    const transaction = this.db.transaction(this.name, "readonly");
+    return (await transaction.store.count(id)) > 0;
+  }
+
+  async delete(id: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    await transaction.store.delete(id);
+  }
+
+  async put(id: string) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    // use the ID as the key
+    await transaction.store.put(id, id);
   }
 }
 
@@ -463,7 +498,8 @@ export class DbPeer {
     readonly message: StoreMessage,
     readonly objectDoc: StoreObjectDoc,
     readonly messageBody: StoreMessageBody,
-    readonly viewMessage: StoreViewMessage
+    readonly viewMessage: StoreViewMessage,
+    readonly deletedMessage: StoreDocumentId
   ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
@@ -473,6 +509,7 @@ export class DbPeer {
     let storeObjectDoc: StoreObjectDoc | undefined = undefined;
     let storeMessageBody: StoreMessageBody | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
+    let storeDeletedMessage: StoreDocumentId | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
@@ -481,6 +518,7 @@ export class DbPeer {
         storeObjectDoc = StoreObjectDoc.create(db);
         storeMessageBody = StoreMessageBody.create(db);
         storeViewMessage = StoreViewMessage.create(db);
+        storeDeletedMessage = StoreDocumentId.create(db, "DeletedMessage");
       },
     });
     storeServer = storeServer ? storeServer : new StoreServer(db);
@@ -489,7 +527,19 @@ export class DbPeer {
     storeObjectDoc = storeObjectDoc ? storeObjectDoc : new StoreObjectDoc(db);
     storeMessageBody = storeMessageBody ? storeMessageBody : new StoreMessageBody(db);
     storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
-    return new DbPeer(db, storeServer, storeFollow, storeMessage, storeObjectDoc, storeMessageBody, storeViewMessage);
+    storeDeletedMessage = storeDeletedMessage
+      ? storeDeletedMessage
+      : new StoreDocumentId(db, "DeletedMessage");
+    return new DbPeer(
+      db,
+      storeServer,
+      storeFollow,
+      storeMessage,
+      storeObjectDoc,
+      storeMessageBody,
+      storeViewMessage,
+      storeDeletedMessage
+    );
   }
 
   async clear() {
@@ -497,6 +547,8 @@ export class DbPeer {
     await this.follow.clear();
     await this.message.clear();
     await this.objectDoc.clear();
+    await this.messageBody.clear();
     await this.viewMessage.clear();
+    await this.deletedMessage.clear();
   }
 }

@@ -165,5 +165,15 @@ describe("storage", () => {
       await db.viewMessage.put(view3);
       assert.deepEqual(await db.viewMessage.get("id:a"), view3);
     });
+
+    it("puts has deleted ID", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      db.deletedMessage.put("id:a");
+      db.deletedMessage.put("id:b");
+      assert.ok(await db.deletedMessage.hasId("id:a"));
+      assert.ok(await db.deletedMessage.hasId("id:b"));
+      assert.ok(!(await db.deletedMessage.hasId("id:c")));
+    });
   });
 });

@@ -263,7 +263,8 @@ export class ChatterNet {
    *
    * @param messageId the message ID to remove
    */
-  async unstoreMessages(messageId: string): Promise<void> {
+  async deleteMessageLocal(messageId: string): Promise<void> {
+    await this.dbs.peer.deletedMessage.put(messageId);
     await this.dbs.peer.message.delete(messageId);
     await this.dbs.peer.objectDoc.delete(messageId);
     const bodiesId = await this.dbs.peer.messageBody.getBodiesForMessage(messageId);
@@ -272,6 +273,16 @@ export class ChatterNet {
       if (await this.dbs.peer.messageBody.hasMessageWithBody(bodyId)) continue;
       this.dbs.peer.objectDoc.delete(bodyId);
     }
+  }
+
+  /**
+   * Check if a message ID is known to be deleted.
+   *
+   * @param messageId
+   * @returns
+   */
+  async messageIsDeleted(messageId: string): Promise<boolean> {
+    return await this.dbs.peer.deletedMessage.hasId(messageId);
   }
 
   /**
@@ -325,10 +336,7 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newDelete(
-    messageId: string,
-    audience?: string[]
-  ): Promise<Messages.MessageWithId> {
+  async newDelete(messageId: string, audience?: string[]): Promise<Messages.MessageWithId> {
     return await this.newMessage([messageId], "Delete", audience);
   }
 

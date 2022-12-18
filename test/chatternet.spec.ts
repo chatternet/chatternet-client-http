@@ -287,8 +287,12 @@ describe("chatter net", () => {
     assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
     assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
     assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 2);
+    // message is not deleted
+    assert.ok(!(await chatterNet1.messageIsDeleted(note.message.id)));
     // removes message
-    await chatterNet1.unstoreMessages(note.message.id);
+    await chatterNet1.deleteMessageLocal(note.message.id);
+    // message is deleted
+    assert.ok(await chatterNet1.messageIsDeleted(note.message.id));
     // can no longer retrieve message object
     assert.ok(!(await chatterNet1.getObjectDoc(note.message.id)));
     assert.ok(!(await chatterNet1.getObjectDoc(note.objects[0].id)));
