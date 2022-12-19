@@ -95,7 +95,7 @@ describe("storage", () => {
       assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:b"]);
     });
 
-    it("puts and gets message ids", async () => {
+    it("puts gets deletes message ids", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       await db.message.put("id:a");
@@ -108,9 +108,13 @@ describe("storage", () => {
       let out3 = await db.message.getPage(out2.nextStartIdx, 2);
       assert.deepEqual(out3.ids, []);
       assert.equal(out3.nextStartIdx, null);
+      await db.message.delete("id:c");
+      await db.message.delete("id:d");
+      let out4 = await db.message.getPage(undefined, 2);
+      assert.deepEqual(out4.ids, ["id:b", "id:a"]);
     });
 
-    it("puts and gets object doc", async () => {
+    it("puts gets deletes object doc", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       const objectDoc1 = await Messages.newObjectDoc("Note", { content: "abc" });
@@ -120,6 +124,29 @@ describe("storage", () => {
       await db.objectDoc.put(objectDoc2);
       assert.deepEqual(await db.objectDoc.get(objectDoc1.id), objectDoc1);
       assert.deepEqual(await db.objectDoc.get(objectDoc2.id), objectDoc2);
+      await db.objectDoc.delete(objectDoc1.id);
+      assert.ok(!(await db.objectDoc.get(objectDoc1.id)));
+    });
+
+    it("puts gets has deletes message body", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      await db.messageBody.put("id:m1", "id:b1");
+      await db.messageBody.put("id:m2", "id:b1");
+      await db.messageBody.put("id:m3", "id:b2");
+      await db.messageBody.put("id:m3", "id:b3");
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b2"));
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b3"));
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b4")));
+      assert.deepEqual(await db.messageBody.getBodiesForMessage("id:m3"), ["id:b2", "id:b3"]);
+      await db.messageBody.delete("id:m1", "id:b1");
+      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
+      await db.messageBody.delete("id:m2", "id:b1");
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b1")));
+      await db.messageBody.deleteForMessage("id:m3");
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b2")));
+      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b3")));
     });
 
     it("puts and gets view messages", async () => {
@@ -137,6 +164,16 @@ describe("storage", () => {
       const view3 = await Messages.newMessage(did, ["id:a"], "View", null, key);
       await db.viewMessage.put(view3);
       assert.deepEqual(await db.viewMessage.get("id:a"), view3);
+    });
+
+    it("puts has deleted ID", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+      db.deletedMessage.put("id:a");
+      db.deletedMessage.put("id:b");
+      assert.ok(await db.deletedMessage.hasId("id:a"));
+      assert.ok(await db.deletedMessage.hasId("id:b"));
+      assert.ok(!(await db.deletedMessage.hasId("id:c")));
     });
   });
 });

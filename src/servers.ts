@@ -44,7 +44,12 @@ async function postObjectDoc(objetDoc: Messages.ObjectDoc, serverUrl: string): P
   return await fetch(request);
 }
 
-async function getInbox(did: string, serverUrl: string, startIdx?: number, pageSize?: number): Promise<Response> {
+async function getInbox(
+  did: string,
+  serverUrl: string,
+  startIdx?: number,
+  pageSize?: number
+): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
   const url = new URL(`${serverUrl}/ap/${did}/actor/inbox`);
   if (startIdx) url.searchParams.set("startIdx", startIdx.toString());
@@ -139,7 +144,12 @@ export class Servers {
     return +startIdx;
   }
 
-  async getInbox(url: string, did: string, startIdx?: number, pageSize?: number): Promise<InboxOut> {
+  async getInbox(
+    url: string,
+    did: string,
+    startIdx?: number,
+    pageSize?: number
+  ): Promise<InboxOut> {
     const server = this.urlsServer.get(url);
     if (!server) throw Error("server URL is not known");
     const response = await getInbox(did, url, startIdx, pageSize);

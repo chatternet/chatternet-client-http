@@ -29,7 +29,7 @@
     "build": "aegir build",
     "test": "aegir test --target node",
     "clean": "rm -rf dist/",
-    "fmt": "prettier -w {test,src,types}/**/*.{js,ts}"
+    "fmt": "prettier -w '{test,src,types}/**/*.{js,ts}'"
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "3.4.0",

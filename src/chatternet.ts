@@ -252,7 +252,37 @@ export class ChatterNet {
   async storeMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
     await this.dbs.peer.message.put(messageObjectDoc.message.id);
     await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
-    for (const objectDoc of messageObjectDoc.objects) await this.dbs.peer.objectDoc.put(objectDoc);
+    for (const objectDoc of messageObjectDoc.objects) {
+      await this.dbs.peer.objectDoc.put(objectDoc);
+      await this.dbs.peer.messageBody.put(messageObjectDoc.message.id, objectDoc.id);
+    }
+  }
+
+  /**
+   * Remove a message from the local store if present.
+   *
+   * @param messageId the message ID to remove
+   */
+  async deleteMessageLocal(messageId: string): Promise<void> {
+    await this.dbs.peer.deletedMessage.put(messageId);
+    await this.dbs.peer.message.delete(messageId);
+    await this.dbs.peer.objectDoc.delete(messageId);
+    const bodiesId = await this.dbs.peer.messageBody.getBodiesForMessage(messageId);
+    this.dbs.peer.messageBody.deleteForMessage(messageId);
+    for (const bodyId of bodiesId) {
+      if (await this.dbs.peer.messageBody.hasMessageWithBody(bodyId)) continue;
+      this.dbs.peer.objectDoc.delete(bodyId);
+    }
+  }
+
+  /**
+   * Check if a message ID is known to be deleted.
+   *
+   * @param messageId
+   * @returns
+   */
+  async messageIsDeleted(messageId: string): Promise<boolean> {
+    return await this.dbs.peer.deletedMessage.hasId(messageId);
   }
 
   /**
@@ -294,6 +324,29 @@ export class ChatterNet {
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
     return await Messages.newMessage(did, ids, type, null, this.key, { audience });
+  }
+
+  /**
+   * Builds and signs a message indicating that another should be deleted. The
+   * message to delete must be stored locally and be from the local actor.
+   *
+   * This is a local operation.
+   *
+   * @param ids list of message objects IDs
+   * @param audience audiences to address the message to, defaults to local
+   *   actor followers if none is provided
+   * @returns the signed message
+   */
+  async newDelete(
+    messageId: string,
+    audience?: string[]
+  ): Promise<Messages.MessageWithId | undefined> {
+    const message = await this.dbs.peer.objectDoc.get(messageId);
+    const actorId = ChatterNet.actorFromDid(this.getLocalDid());
+    if (!message) return;
+    if (!Messages.isMessageWithId(message)) return;
+    if (message.actor != actorId) return;
+    return await this.newMessage([messageId], "Delete", audience);
   }
 
   /**

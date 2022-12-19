@@ -23,7 +23,12 @@ export class MessageIter {
     readonly messagesId: Set<string>
   ) {}
 
-  static async new(did: string, servers: Servers, dbPeer: DbPeer, pageSize: number): Promise<MessageIter> {
+  static async new(
+    did: string,
+    servers: Servers,
+    dbPeer: DbPeer,
+    pageSize: number
+  ): Promise<MessageIter> {
     const cursors = [...servers.urlsServer.values()].map((x) => ({
       url: x.url,
       did,
@@ -65,7 +70,8 @@ export class MessageIter {
           inboxOut = await this.servers.getInbox(url, did, startIdx, this.pageSize);
         } catch {}
         if (inboxOut == null) continue;
-        if (inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0) this.serverCursors[serverIdx].exhausted = true;
+        if (inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0)
+          this.serverCursors[serverIdx].exhausted = true;
         this.serverCursors[serverIdx].startIdx = inboxOut.nextStartIdx;
         for (const message of inboxOut.messages) {
           if (this.messagesId.has(message.id)) continue;
