@@ -13,29 +13,18 @@ import { sha256 } from "multiformats/hashes/sha2";
 
 export type Key = Ed25519VerificationKey2020;
 
-export type Uri = string;
-export function isUri(x: unknown): x is Uri {
-  if (typeof x !== "string") return false;
-  try {
-    new URL(x);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export type DateTime = string;
-export function isDateTime(x: unknown): x is Uri {
+export function isDateTime(x: unknown): x is DateTime {
   if (typeof x !== "string") return false;
   let date1 = new Date(x);
   let date2 = new Date(date1.toISOString());
-  return date1 === date2;
+  return date1.getTime() === date2.getTime();
 }
 
 export interface Proof {
   type: string;
   created: DateTime;
-  verificationMethod: Uri;
+  verificationMethod: string;
   proofPurpose: string;
   proofValue: string;
 }

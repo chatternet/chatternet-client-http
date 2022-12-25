@@ -1,4 +1,4 @@
-import { DidKey, Messages } from "../src/index.js";
+import { DidKey, Model } from "../src/index.js";
 import * as Storage from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
@@ -117,15 +117,15 @@ describe("storage", () => {
     it("puts gets deletes object doc", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      const objectDoc1 = await Messages.newObjectDoc("Note", { content: "abc" });
-      const objectDoc2 = await Messages.newObjectDoc("Note", { content: "abcd" });
-      await db.objectDoc.put(objectDoc1);
-      await db.objectDoc.put(objectDoc2);
-      await db.objectDoc.put(objectDoc2);
-      assert.deepEqual(await db.objectDoc.get(objectDoc1.id), objectDoc1);
-      assert.deepEqual(await db.objectDoc.get(objectDoc2.id), objectDoc2);
-      await db.objectDoc.delete(objectDoc1.id);
-      assert.ok(!(await db.objectDoc.get(objectDoc1.id)));
+      const doc1 = await Model.newBody("Note", { content: "abc" });
+      const doc2 = await Model.newBody("Note", { content: "abcd" });
+      await db.document.put(doc1);
+      await db.document.put(doc2);
+      await db.document.put(doc2);
+      assert.deepEqual(await db.document.get(doc1.id), doc1);
+      assert.deepEqual(await db.document.get(doc2.id), doc2);
+      await db.document.delete(doc1.id);
+      assert.ok(!(await db.document.get(doc1.id)));
     });
 
     it("puts gets has deletes message body", async () => {
@@ -149,19 +149,19 @@ describe("storage", () => {
       assert.ok(!(await db.messageBody.hasMessageWithBody("id:b3")));
     });
 
-    it("puts and gets view messages", async () => {
+    it("puts and gets view message", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       const key = await DidKey.newKey();
       const did = DidKey.didFromKey(key);
-      const view1 = await Messages.newMessage(did, ["id:a"], "View", null, key);
-      const view2 = await Messages.newMessage(did, ["id:b"], "View", null, key);
+      const view1 = await Model.newMessage(did, ["id:a"], "View", null, key);
+      const view2 = await Model.newMessage(did, ["id:b"], "View", null, key);
       await db.viewMessage.put(view1);
       await db.viewMessage.put(view2);
       assert.deepEqual(await db.viewMessage.get("id:a"), view1);
       assert.deepEqual(await db.viewMessage.get("id:b"), view2);
       // overrides
-      const view3 = await Messages.newMessage(did, ["id:a"], "View", null, key);
+      const view3 = await Model.newMessage(did, ["id:a"], "View", null, key);
       await db.viewMessage.put(view3);
       assert.deepEqual(await db.viewMessage.get("id:a"), view3);
     });

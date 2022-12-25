@@ -1,5 +1,5 @@
 import { ChatterNet, DidKey, MessageIter } from "../src/index.js";
-import type { MessageWithId } from "../src/messages.js";
+import type { Message } from "../src/model/index.js";
 import type { ServerInfo } from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
@@ -87,10 +87,10 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const { objects } = await chatterNet.newNote("abcd");
-    assert.equal(objects.length, 1);
-    assert.equal(objects[0].type, "Note");
-    assert.equal(objects[0].content, "abcd");
+    const { bodies } = await chatterNet.newNote("abcd");
+    assert.equal(bodies.length, 1);
+    assert.equal(bodies[0].type, "Note");
+    assert.equal(bodies[0].content, "abcd");
   });
 
   it("builds a delete message", async () => {
@@ -101,7 +101,7 @@ describe("chatter net", () => {
     // cannot delete a message which is not yet known
     assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
     // if local has message, it can be deleted
-    await chatterNet1.storeMessageObjectDoc(messageObjectDoc);
+    await chatterNet1.storeMessageBodies(messageObjectDoc);
     const deleteMessage = await chatterNet1.newDelete(messageObjectDoc.message.id);
     assert.ok(deleteMessage);
     assert.equal(deleteMessage.type, "Delete");
@@ -115,7 +115,7 @@ describe("chatter net", () => {
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
     const messageObjectDoc = await chatterNet2.newNote("abcd");
-    await chatterNet1.storeMessageObjectDoc(messageObjectDoc);
+    await chatterNet1.storeMessageBodies(messageObjectDoc);
     // cannot delete a message with different actor
     assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
   });
@@ -145,10 +145,9 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const message = await chatterNet.newListenServer("did:example:a", "https://a.example");
+    const { message } = await chatterNet.newListen("did:example:a");
     assert.equal(message.type, "Listen");
     assert.deepEqual(message.object, ["did:example:a/actor"]);
-    assert.deepEqual(message.instrument, { type: "Link", href: "https://a.example" });
   });
 
   it("builds a view message", async () => {
@@ -203,11 +202,11 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const { message, objects } = await chatterNet.buildActor();
+    const { message, bodies } = await chatterNet.buildActor();
     assert.equal(message.type, "Create");
     assert.equal(message.object, ChatterNet.actorFromDid(did));
-    assert.equal(objects.length, 1);
-    assert.equal(objects[0].id, ChatterNet.actorFromDid(did));
+    assert.equal(bodies.length, 1);
+    assert.equal(bodies[0].id, ChatterNet.actorFromDid(did));
   });
 
   it("posts and gets actor with server", async () => {
@@ -225,14 +224,14 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", []);
-    await chatterNet.storeMessageObjectDoc(await chatterNet.buildActor());
+    await chatterNet.storeMessageBodies(await chatterNet.buildActor());
     const actor = await chatterNet.getActor(ChatterNet.actorFromDid(did));
     assert.ok(actor);
     assert.equal(actor.id, ChatterNet.actorFromDid(did));
   });
 
-  async function listMessages(messageIter: MessageIter): Promise<MessageWithId[]> {
-    const messages: MessageWithId[] = [];
+  async function listMessages(messageIter: MessageIter): Promise<Message[]> {
+    const messages: Message[] = [];
     for await (const message of messageIter.messages()) if (!!message) messages.push(message);
     return messages;
   }
@@ -252,8 +251,8 @@ describe("chatter net", () => {
     const note = await chatterNet1.newNote("Hi!");
     await chatterNet1.postMessageObjectDoc(note);
     // gets object
-    assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
-    assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
+    assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getDocument(note.bodies[0].id))?.id, note.bodies[0].id);
     // iterates own message
     const messages1 = await listMessages(await chatterNet1.buildMessageIter());
     assert.ok(new Set(messages1.map((x) => x.id)).has(note.message.id));
@@ -268,7 +267,7 @@ describe("chatter net", () => {
     // views message
     const viewMessage = await chatterNet2.getOrNewViewMessage(note.message);
     assert.ok(viewMessage);
-    await chatterNet2.postMessageObjectDoc({ message: viewMessage, objects: [] });
+    await chatterNet2.postMessageObjectDoc({ message: viewMessage, bodies: [] });
 
     // did3 follows did2
     await chatterNet3.postMessageObjectDoc(
@@ -285,10 +284,10 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
     const note = await chatterNet1.newNote("Hi!");
-    await chatterNet1.storeMessageObjectDoc(note);
+    await chatterNet1.storeMessageBodies(note);
     // gets object
-    assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
-    assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
+    assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getDocument(note.bodies[0].id))?.id, note.bodies[0].id);
     // iterates own message
     const messages1 = await listMessages(await chatterNet1.buildMessageIter());
     assert.ok(new Set(messages1.map((x) => x.id)).has(note.message.id));
@@ -300,10 +299,10 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
     const note = await chatterNet1.newNote("Hi!");
-    await chatterNet1.storeMessageObjectDoc(note);
+    await chatterNet1.storeMessageBodies(note);
     // can retrieve message
-    assert.equal((await chatterNet1.getObjectDoc(note.message.id))?.id, note.message.id);
-    assert.equal((await chatterNet1.getObjectDoc(note.objects[0].id))?.id, note.objects[0].id);
+    assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getDocument(note.bodies[0].id))?.id, note.bodies[0].id);
     assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 2);
     // message is not deleted
     assert.ok(!(await chatterNet1.messageIsDeleted(note.message.id)));
@@ -312,8 +311,8 @@ describe("chatter net", () => {
     // message is deleted
     assert.ok(await chatterNet1.messageIsDeleted(note.message.id));
     // can no longer retrieve message object
-    assert.ok(!(await chatterNet1.getObjectDoc(note.message.id)));
-    assert.ok(!(await chatterNet1.getObjectDoc(note.objects[0].id)));
+    assert.ok(!(await chatterNet1.getDocument(note.message.id)));
+    assert.ok(!(await chatterNet1.getDocument(note.bodies[0].id)));
     // no longer iterates message
     assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 1);
   });

@@ -1,6 +1,6 @@
 import * as DidKey from "../src/didkey.js";
 import { MessageIter } from "../src/messageiter.js";
-import * as Messages from "../src/messages.js";
+import * as Model from "../src/model/index.js";
 import { Servers } from "../src/servers.js";
 import { DbPeer } from "../src/storage.js";
 import * as assert from "assert";
@@ -11,25 +11,25 @@ describe("message iter", () => {
     const actorDid = DidKey.didFromKey(key);
 
     const messagesA = [
-      await Messages.newMessage(actorDid, ["urn:cid:a1"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:a2"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:a3"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:a1"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:a2"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:a3"], "Create", null, key),
     ];
 
     const messagesB = [
       messagesA[2],
-      await Messages.newMessage(actorDid, ["urn:cid:b1"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:b1"], "Create", null, key),
     ];
 
     const messagesLocal = [
-      await Messages.newMessage(actorDid, ["urn:cid:l1"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:l2"], "Create", null, key),
-      await Messages.newMessage(actorDid, ["urn:cid:l3"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:l1"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:l2"], "Create", null, key),
+      await Model.newMessage(actorDid, ["urn:cid:l3"], "Create", null, key),
     ];
 
     const dbPeer = await DbPeer.new();
     for (const messageLocal of messagesLocal) {
-      await dbPeer.objectDoc.put(messageLocal);
+      await dbPeer.document.put(messageLocal);
       await dbPeer.message.put(messageLocal.id);
     }
 
@@ -65,7 +65,7 @@ describe("message iter", () => {
     };
 
     const messageIter = await MessageIter.new(actorDid, servers, dbPeer, 2);
-    const messages: Messages.MessageWithId[] = [];
+    const messages: Model.Message[] = [];
     const numCycles: number[] = [];
     for await (const message of messageIter.messages()) {
       messages.push(message);
