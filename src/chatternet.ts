@@ -1,6 +1,7 @@
 import * as DidKey from "./didkey.js";
 import { MessageIter } from "./messageiter.js";
-import * as Messages from "./messages.js";
+import type { Actor, Body, Message } from "./model/index.js";
+import * as Model from "./model/index.js";
 import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
@@ -19,9 +20,9 @@ interface Dbs {
  * stored in a separate `Object` document which is listed in the message's
  * `object` property.
  */
-export interface MessageObjectDoc {
-  message: Messages.MessageWithId;
-  objects: Messages.ObjectDocWithId[];
+export interface MessageBodies {
+  message: Message;
+  bodies: Body[];
 }
 
 /**
@@ -152,7 +153,7 @@ export class ChatterNet {
 
     // tell the server about the user name
     const actorMessageObjectDoc = await chatterNet.buildActor();
-    chatterNet.storeMessageObjectDoc(actorMessageObjectDoc);
+    chatterNet.storeMessageBodies(actorMessageObjectDoc);
     chatterNet.postMessageObjectDoc(actorMessageObjectDoc).catch(() => {});
     // tell the server about the actor follows
     chatterNet.postMessageObjectDoc(await chatterNet.buildFollows()).catch(() => {});
@@ -167,7 +168,7 @@ export class ChatterNet {
    *
    * @param name the new user name
    */
-  async changeName(name: string): Promise<MessageObjectDoc> {
+  async changeName(name: string): Promise<MessageBodies> {
     this.name = name;
     await this.dbs.device.idName.put(this.getLocalDid(), name);
     return await this.buildActor();
@@ -196,12 +197,12 @@ export class ChatterNet {
    *
    * @returns `Collection` with the `items` property listing the followed IDs.
    */
-  async buildFollows(): Promise<MessageObjectDoc> {
+  async buildFollows(): Promise<MessageBodies> {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
     // follow all followed IDs from the local store, and self
     const follows = [...new Set([...(await this.dbs.peer.follow.getAll()), actorId])];
     const message = await this.newMessage(follows, "Follow", []);
-    return { message, objects: [] };
+    return { message, bodies: [] };
   }
 
   /**
@@ -209,13 +210,13 @@ export class ChatterNet {
    *
    * @returns `Collection` with the `items` property listing the followed IDs.
    */
-  async buildActor(): Promise<MessageObjectDoc> {
+  async buildActor(): Promise<MessageBodies> {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
-    const actor = await Messages.newActor(this.getLocalDid(), "Person", this.key, {
+    const actor = await Model.newActor(this.getLocalDid(), "Person", this.key, {
       name: this.getLocalName(),
     });
     const message = await this.newMessage([actorId], "Create", []);
-    return { message, objects: [actor] };
+    return { message, bodies: [actor] };
   }
 
   /**
@@ -228,13 +229,13 @@ export class ChatterNet {
    * A server could return a message to an actor which does not belong to that
    * actor's inbox because of out-of-date data or non-compliance.
    */
-  async buildMessageAffinity(message: Messages.MessageWithId): Promise<MessageAffinity> {
+  async buildMessageAffinity(message: Message): Promise<MessageAffinity> {
     const localFollows = await this.dbs.peer.follow.getAll();
     const localActor = ChatterNet.actorFromDid(this.getLocalDid());
     const fromContact = message.actor === localActor || new Set(localFollows).has(message.actor);
     const localAudience = ChatterNet.followersFromId(localActor);
     const localAudiences = new Set(localFollows.map((x) => ChatterNet.followersFromId(x)));
-    const audiences = Messages.getAudiences(message);
+    const audiences = Model.getAudiences(message);
     let inAudience = false;
     for (const audience of audiences) {
       if (localAudience !== audience && !localAudiences.has(audience)) continue;
@@ -245,16 +246,16 @@ export class ChatterNet {
   }
 
   /**
-   * Store a message and any of its provided objects to the local store.
+   * Store a message and any of its provided bodies to the local store.
    *
-   * @param messageObjectDoc
+   * @param messageBodies
    */
-  async storeMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
-    await this.dbs.peer.message.put(messageObjectDoc.message.id);
-    await this.dbs.peer.objectDoc.put(messageObjectDoc.message);
-    for (const objectDoc of messageObjectDoc.objects) {
-      await this.dbs.peer.objectDoc.put(objectDoc);
-      await this.dbs.peer.messageBody.put(messageObjectDoc.message.id, objectDoc.id);
+  async storeMessageBodies(messageBodies: MessageBodies) {
+    await this.dbs.peer.message.put(messageBodies.message.id);
+    await this.dbs.peer.document.put(messageBodies.message);
+    for (const objectDoc of messageBodies.bodies) {
+      await this.dbs.peer.document.put(objectDoc);
+      await this.dbs.peer.messageBody.put(messageBodies.message.id, objectDoc.id);
     }
   }
 
@@ -266,12 +267,12 @@ export class ChatterNet {
   async deleteMessageLocal(messageId: string): Promise<void> {
     await this.dbs.peer.deletedMessage.put(messageId);
     await this.dbs.peer.message.delete(messageId);
-    await this.dbs.peer.objectDoc.delete(messageId);
+    await this.dbs.peer.document.delete(messageId);
     const bodiesId = await this.dbs.peer.messageBody.getBodiesForMessage(messageId);
     this.dbs.peer.messageBody.deleteForMessage(messageId);
     for (const bodyId of bodiesId) {
       if (await this.dbs.peer.messageBody.hasMessageWithBody(bodyId)) continue;
-      this.dbs.peer.objectDoc.delete(bodyId);
+      this.dbs.peer.document.delete(bodyId);
     }
   }
 
@@ -286,13 +287,13 @@ export class ChatterNet {
   }
 
   /**
-   * Post a message and any of its provided objects to the servers.
+   * Post a message and any of its provided bodies to the servers.
    *
-   * @param messageObjectDoc the message and associated objects to post
+   * @param messageBodies the message and associated bodies to post
    */
-  async postMessageObjectDoc(messageObjectDoc: MessageObjectDoc) {
-    await this.servers.postMessage(messageObjectDoc.message, this.getLocalDid());
-    for (const objectDoc of messageObjectDoc.objects) await this.postObjectDoc(objectDoc);
+  async postMessageObjectDoc(messageBodies: MessageBodies) {
+    await this.servers.postMessage(messageBodies.message, this.getLocalDid());
+    for (const objectDoc of messageBodies.bodies) await this.postObjectDoc(objectDoc);
   }
 
   /**
@@ -300,8 +301,8 @@ export class ChatterNet {
    *
    * @param objectDoc the object to post
    */
-  async postObjectDoc(objectDoc: Messages.ObjectDocWithId) {
-    await this.servers.postObjectDoc(objectDoc);
+  async postObjectDoc(body: Body) {
+    await this.servers.postDocument(body);
   }
 
   /**
@@ -314,16 +315,12 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newMessage(
-    ids: string[],
-    type: string,
-    audience?: string[]
-  ): Promise<Messages.MessageWithId> {
+  async newMessage(ids: string[], type: string, audience?: string[]): Promise<Message> {
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
-    return await Messages.newMessage(did, ids, type, null, this.key, { audience });
+    return await Model.newMessage(did, ids, type, null, this.key, { audience });
   }
 
   /**
@@ -337,14 +334,11 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newDelete(
-    messageId: string,
-    audience?: string[]
-  ): Promise<Messages.MessageWithId | undefined> {
-    const message = await this.dbs.peer.objectDoc.get(messageId);
+  async newDelete(messageId: string, audience?: string[]): Promise<Message | undefined> {
+    const message = await this.dbs.peer.document.get(messageId);
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
     if (!message) return;
-    if (!Messages.isMessageWithId(message)) return;
+    if (!Model.isMessage(message)) return;
     if (message.actor != actorId) return;
     return await this.newMessage([messageId], "Delete", audience);
   }
@@ -357,12 +351,13 @@ export class ChatterNet {
    * @param content the string content of the note
    * @param audience audiences to address the message to, defaults to local
    *   actor followers if none is provided
+   * @param mediaType mime type of the content
    * @returns
    */
-  async newNote(content: string, audience?: string[]): Promise<MessageObjectDoc> {
-    const note = await Messages.newObjectDoc("Note", { content });
+  async newNote(content: string, audience?: string[], mediaType?: string): Promise<MessageBodies> {
+    const note = await Model.newBody("Note", { content, mediaType });
     const message = await this.newMessage([note.id], "Create", audience);
-    return { message, objects: [note] };
+    return { message, bodies: [note] };
   }
 
   /**
@@ -383,13 +378,13 @@ export class ChatterNet {
    *   actor followers and followed Id followers if none is provided
    * @returns the message and object to send
    */
-  async newFollow(id: string, audience?: string[]): Promise<MessageObjectDoc> {
+  async newFollow(id: string, audience?: string[]): Promise<MessageBodies> {
     await this.dbs.peer.follow.put(id);
     const actorFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(this.getLocalDid()));
     const idFollowers = ChatterNet.followersFromId(id);
     audience = audience ? audience : [actorFollowers, idFollowers];
     const message = await this.newMessage([id], "Follow", audience);
-    return { message, objects: [] };
+    return { message, bodies: [] };
   }
 
   /**
@@ -403,25 +398,20 @@ export class ChatterNet {
    * their ability to get messages from the local actor.
    *
    * @param id ID of the listened server actor
-   * @param url the URL where the server can be reached
    * @param audience audiences to address the message to, defaults to local
    *   actor followers and followers of the listened actor if none is provided
    * @returns the message and object to send
    */
-  async newListenServer(
-    did: string,
-    url: string,
-    audience?: string[]
-  ): Promise<Messages.MessageWithId> {
+  async newListen(did: string, audience?: string[]): Promise<MessageBodies> {
     const actorDid = this.getLocalDid();
     const actorActorId = ChatterNet.actorFromDid(actorDid);
     const actorFollowers = ChatterNet.followersFromId(actorActorId);
     audience = audience ? audience : [actorFollowers];
     const serverActorId = ChatterNet.actorFromDid(did);
-    return await Messages.newMessage(actorDid, [serverActorId], "Listen", null, this.key, {
-      instrument: { type: "Link", href: url },
+    const message = await Model.newMessage(actorDid, [serverActorId], "Listen", null, this.key, {
       audience,
     });
+    return { message, bodies: [] };
   }
 
   /**
@@ -438,10 +428,7 @@ export class ChatterNet {
    *   actor followers if none is provided
    * @returns the message and object to send
    */
-  async getOrNewViewMessage(
-    message: Messages.MessageWithId,
-    audience?: string[]
-  ): Promise<Messages.MessageWithId | undefined> {
+  async getOrNewViewMessage(message: Message, audience?: string[]): Promise<Message | undefined> {
     // don't view messages from self
     const actorDid = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(actorDid);
@@ -456,7 +443,7 @@ export class ChatterNet {
 
     const actorFollowers = ChatterNet.followersFromId(actorId);
     audience = audience ? audience : [actorFollowers];
-    const view = await Messages.newMessage(actorDid, message.object, "View", null, this.key, {
+    const view = await Model.newMessage(actorDid, message.object, "View", null, this.key, {
       origin: message.id,
       audience,
     });
@@ -490,16 +477,13 @@ export class ChatterNet {
    * @param id the actor ID
    * @returns the actor document
    */
-  async getObjectDoc(
-    id: string,
-    validate?: boolean
-  ): Promise<Messages.ObjectDocWithId | undefined> {
-    let objectDoc: Messages.ObjectDocWithId | undefined = undefined;
+  async getDocument(id: string): Promise<Model.WithId | undefined> {
+    let document: Model.WithId | undefined = undefined;
     // try first from local store
-    if (!objectDoc) objectDoc = await this.dbs.peer.objectDoc.get(id);
+    if (!document) document = await this.dbs.peer.document.get(id);
     // then from servers
-    if (!objectDoc) objectDoc = await this.servers.getObjectDoc(id, validate);
-    return objectDoc;
+    if (!document) document = await this.servers.getDocument(id);
+    return document;
   }
 
   /**
@@ -511,10 +495,10 @@ export class ChatterNet {
    * @param id the actor ID
    * @returns the actor document
    */
-  async getActor(id: string): Promise<Messages.Actor | undefined> {
-    let actor: Messages.ObjectDocWithId | undefined = await this.getObjectDoc(id, false);
-    if (!Messages.isActor(actor)) return;
-    if (!(await Messages.verifyActor(actor))) return;
+  async getActor(id: string): Promise<Actor | undefined> {
+    let actor: Model.WithId | undefined = await this.getDocument(id);
+    if (!Model.isActor(actor)) return;
+    if (!(await Model.verifyActor(actor))) return;
     return actor;
   }
 

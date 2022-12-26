@@ -1,5 +1,5 @@
 import { didFromKey } from "./didkey.js";
-import type { Messages } from "./index.js";
+import type { Model } from "./index.js";
 import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
@@ -293,28 +293,28 @@ class StoreMessage {
   }
 }
 
-interface RecordObjectDoc {
-  objectDoc: Messages.ObjectDocWithId;
+interface RecordDocument {
+  document: Model.WithId;
 }
 
-class StoreObjectDoc {
-  static DEFAULT_NAME = "ObjectDoc";
+class StoreDocument {
+  static DEFAULT_NAME = "Document";
 
-  constructor(readonly db: IDBPDatabase, readonly name: string = StoreObjectDoc.DEFAULT_NAME) {}
+  constructor(readonly db: IDBPDatabase, readonly name: string = StoreDocument.DEFAULT_NAME) {}
 
-  static create(db: IDBPDatabase, name: string = StoreObjectDoc.DEFAULT_NAME) {
-    db.createObjectStore(name, { keyPath: "objectDoc.id" });
-    return new StoreObjectDoc(db, name);
+  static create(db: IDBPDatabase, name: string = StoreDocument.DEFAULT_NAME) {
+    db.createObjectStore(name, { keyPath: "document.id" });
+    return new StoreDocument(db, name);
   }
 
   async clear() {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
-  async get(id: string): Promise<Messages.ObjectDocWithId | undefined> {
+  async get(id: string): Promise<Model.WithId | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
-    const record: RecordObjectDoc | undefined = await transaction.store.get(id);
-    return !!record ? record.objectDoc : undefined;
+    const record: RecordDocument | undefined = await transaction.store.get(id);
+    return !!record ? record.document : undefined;
   }
 
   async delete(id: string): Promise<void> {
@@ -322,15 +322,15 @@ class StoreObjectDoc {
     await transaction.store.delete(id);
   }
 
-  async put(objectDoc: Messages.ObjectDocWithId) {
+  async put(document: Model.WithId) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const record: RecordObjectDoc = { objectDoc };
+    const record: RecordDocument = { document };
     await transaction.store.put(record);
   }
 }
 
 interface RecordViewMessage {
-  message: Messages.MessageWithId;
+  message: Model.Message;
   objectId: string;
 }
 
@@ -351,13 +351,13 @@ class StoreViewMessage {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
-  async get(objectId: string): Promise<Messages.MessageWithId | undefined> {
+  async get(objectId: string): Promise<Model.Message | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
     const record: RecordViewMessage | undefined = await transaction.store.get(objectId);
     return record?.message;
   }
 
-  async put(message: Messages.MessageWithId) {
+  async put(message: Model.Message) {
     const transaction = this.db.transaction(this.name, "readwrite");
     const record: RecordViewMessage = { message, objectId: message.object[0] };
     await transaction.store.put(record);
@@ -496,7 +496,7 @@ export class DbPeer {
     readonly server: StoreServer,
     readonly follow: StoreFollow,
     readonly message: StoreMessage,
-    readonly objectDoc: StoreObjectDoc,
+    readonly document: StoreDocument,
     readonly messageBody: StoreMessageBody,
     readonly viewMessage: StoreViewMessage,
     readonly deletedMessage: StoreDocumentId
@@ -506,7 +506,7 @@ export class DbPeer {
     let storeServer: StoreServer | undefined = undefined;
     let storeFollow: StoreFollow | undefined = undefined;
     let storeMessage: StoreMessage | undefined = undefined;
-    let storeObjectDoc: StoreObjectDoc | undefined = undefined;
+    let storeDocument: StoreDocument | undefined = undefined;
     let storeMessageBody: StoreMessageBody | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
     let storeDeletedMessage: StoreDocumentId | undefined = undefined;
@@ -515,7 +515,7 @@ export class DbPeer {
         storeServer = StoreServer.create(db);
         storeFollow = StoreFollow.create(db);
         storeMessage = StoreMessage.create(db);
-        storeObjectDoc = StoreObjectDoc.create(db);
+        storeDocument = StoreDocument.create(db);
         storeMessageBody = StoreMessageBody.create(db);
         storeViewMessage = StoreViewMessage.create(db);
         storeDeletedMessage = StoreDocumentId.create(db, "DeletedMessage");
@@ -524,7 +524,7 @@ export class DbPeer {
     storeServer = storeServer ? storeServer : new StoreServer(db);
     storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
     storeMessage = storeMessage ? storeMessage : new StoreMessage(db);
-    storeObjectDoc = storeObjectDoc ? storeObjectDoc : new StoreObjectDoc(db);
+    storeDocument = storeDocument ? storeDocument : new StoreDocument(db);
     storeMessageBody = storeMessageBody ? storeMessageBody : new StoreMessageBody(db);
     storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
     storeDeletedMessage = storeDeletedMessage
@@ -535,7 +535,7 @@ export class DbPeer {
       storeServer,
       storeFollow,
       storeMessage,
-      storeObjectDoc,
+      storeDocument,
       storeMessageBody,
       storeViewMessage,
       storeDeletedMessage
@@ -546,7 +546,7 @@ export class DbPeer {
     await this.server.clear();
     await this.follow.clear();
     await this.message.clear();
-    await this.objectDoc.clear();
+    await this.document.clear();
     await this.messageBody.clear();
     await this.viewMessage.clear();
     await this.deletedMessage.clear();

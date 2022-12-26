@@ -1,4 +1,4 @@
-import type * as Messages from "./messages.js";
+import type * as Model from "./model/index.js";
 import type { InboxOut, Servers } from "./servers.js";
 import type { DbPeer } from "./storage.js";
 
@@ -42,7 +42,7 @@ export class MessageIter {
     return this.numCycles;
   }
 
-  async *messages(): AsyncGenerator<Messages.MessageWithId> {
+  async *messages(): AsyncGenerator<Model.Message> {
     this.numCycles = 0;
     while (true) {
       // get from local first
@@ -53,7 +53,7 @@ export class MessageIter {
         for (const messageId of pageOut.ids) {
           if (this.messagesId.has(messageId)) continue;
           // db stores message IDs separate from message object
-          const message = (await this.dbPeer.objectDoc.get(messageId)) as Messages.MessageWithId;
+          const message = (await this.dbPeer.document.get(messageId)) as Model.Message;
           if (!message) continue;
           this.messagesId.add(messageId);
           yield message;

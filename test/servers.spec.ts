@@ -1,5 +1,5 @@
 import * as DidKey from "../src/didkey.js";
-import * as Messages from "../src/messages.js";
+import * as Model from "../src/model/index.js";
 import { Servers } from "../src/servers.js";
 import * as assert from "assert";
 
@@ -26,7 +26,7 @@ describe("servers", () => {
       return new Response();
     };
     const servers = await Servers.fromInfos(infos);
-    const message = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    const message = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
     await servers.postMessage(message, did);
     await servers.postMessage(message, did);
     assert.deepEqual(requestedUrls, [
@@ -49,9 +49,9 @@ describe("servers", () => {
       return new Response();
     };
     const servers = await Servers.fromInfos(infos);
-    const objectDoc = await Messages.newObjectDoc("Note");
-    await servers.postObjectDoc(objectDoc);
-    await servers.postObjectDoc(objectDoc);
+    const objectDoc = await Model.newBody("Note");
+    await servers.postDocument(objectDoc);
+    await servers.postDocument(objectDoc);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
       `http://b.example/ap/${objectDoc.id}`,
@@ -64,7 +64,7 @@ describe("servers", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const objectDoc = await Messages.newObjectDoc("Note");
+    const objectDoc = await Model.newBody("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       if (
@@ -76,8 +76,8 @@ describe("servers", () => {
     };
     const servers = await Servers.fromInfos(infos);
 
-    const returnedObjectDoc = await servers.getObjectDoc(objectDoc.id);
-    assert.deepEqual(returnedObjectDoc, objectDoc);
+    const returnedBody = await servers.getDocument(objectDoc.id);
+    assert.deepEqual(returnedBody, JSON.parse(JSON.stringify(objectDoc)));
   });
 
   it("get object from server that already had it", async () => {
@@ -87,7 +87,7 @@ describe("servers", () => {
       { url: "http://b.example", did: "did:example:b" },
     ];
     let requestedUrls: string[] = [];
-    const objectDoc = await Messages.newObjectDoc("Note");
+    const objectDoc = await Model.newBody("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       requestedUrls.push(request.url.toString());
@@ -105,39 +105,15 @@ describe("servers", () => {
     };
     const servers = await Servers.fromInfos(infos);
     // tries both URLs before finding the object
-    await servers.getObjectDoc(objectDoc.id);
+    await servers.getDocument(objectDoc.id);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
       `http://b.example/ap/${objectDoc.id}`,
     ]);
     // directly asks b since it knows it has the object
     requestedUrls = [];
-    await servers.getObjectDoc(objectDoc.id);
+    await servers.getDocument(objectDoc.id);
     assert.deepEqual(requestedUrls, [`http://b.example/ap/${objectDoc.id}`]);
-  });
-
-  it("doesnt get invalid object", async () => {
-    resetFetch();
-    const infos = [
-      { url: "http://a.example", did: "did:example:a" },
-      { url: "http://b.example", did: "did:example:b" },
-    ];
-    const objectDoc = await Messages.newObjectDoc("Note");
-    // invalidates the object
-    objectDoc.id = "urn:cid:abc";
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input as Request;
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
-      )
-        return new Response(JSON.stringify(objectDoc));
-      return new Response(null, { status: 500 });
-    };
-    const servers = await Servers.fromInfos(infos);
-
-    const returnedObjectDoc = await servers.getObjectDoc(objectDoc.id);
-    assert.ok(!returnedObjectDoc);
   });
 
   it("doesnt get invalid actor", async () => {
@@ -152,8 +128,8 @@ describe("servers", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const message1 = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
-    const message2 = await Messages.newMessage(did, ["urn:cid:b"], "Create", null, key);
+    const message1 = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    const message2 = await Model.newMessage(did, ["urn:cid:b"], "Create", null, key);
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       if (
@@ -177,9 +153,9 @@ describe("servers", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const message1 = await Messages.newMessage(did, ["urn:cid:a"], "Create", null, key);
+    const message1 = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
     message1.id = "urn:cid:abc";
-    const message2 = await Messages.newMessage(did, ["urn:cid:b"], "Create", null, key);
+    const message2 = await Model.newMessage(did, ["urn:cid:b"], "Create", null, key);
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       if (
