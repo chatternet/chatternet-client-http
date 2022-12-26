@@ -8,10 +8,12 @@ interface BodyNoId {
   "@context": Context;
   type: string;
   content?: string;
+  mediaType?: string;
 }
 
 export interface BodyOptions {
   content?: string;
+  mediaType?: string;
 }
 
 export async function newBody(type: string, options: BodyOptions = {}): Promise<Body> {
