@@ -1,5 +1,6 @@
 import { ChatterNet, DidKey, MessageIter } from "../src/index.js";
-import type { Message } from "../src/model/index.js";
+import { didFromActorId } from "../src/model/actor.js";
+import type { Actor, Message } from "../src/model/index.js";
 import type { ServerInfo } from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
@@ -12,10 +13,21 @@ global.window = {
   localStorage: global.localStorage,
 };
 
+function actorToServerInfo(actor: Actor): ServerInfo {
+  const did = didFromActorId(actor.id);
+  const actorUrl = actor.url;
+  if (did == null) throw Error("actor ID is invalid");
+  if (actorUrl == null) throw Error("actor has no URL");
+  if (!actorUrl.endsWith(`/${actor.id}`)) throw Error("actor URL is not a path to its ID");
+  const url = actorUrl.slice(0, -actor.id.length - 1);
+  return { url, did };
+}
+
 describe("chatter net", () => {
-  const defaultServers: ServerInfo[] = process.env.CHATTERNET_TEST_SERVER
+  const defaultServersActor: Actor[] = process.env.CHATTERNET_TEST_SERVER
     ? [JSON.parse(process.env.CHATTERNET_TEST_SERVER)]
     : [];
+  const defaultServers: ServerInfo[] = defaultServersActor.map(actorToServerInfo);
 
   it("builds from new account", async () => {
     await ChatterNet.clearDbs();
