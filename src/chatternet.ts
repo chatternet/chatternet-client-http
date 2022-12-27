@@ -293,16 +293,16 @@ export class ChatterNet {
    */
   async postMessageObjectDoc(messageBodies: MessageBodies) {
     await this.servers.postMessage(messageBodies.message, this.getLocalDid());
-    for (const objectDoc of messageBodies.bodies) await this.postObjectDoc(objectDoc);
+    for (const objectDoc of messageBodies.bodies) await this.postDocument(objectDoc);
   }
 
   /**
-   * Post an object.
+   * Post a document.
    *
-   * @param objectDoc the object to post
+   * @param document the document
    */
-  async postObjectDoc(body: Body) {
-    await this.servers.postDocument(body);
+  async postDocument(document: Model.WithId) {
+    await this.servers.postDocument(document);
   }
 
   /**
