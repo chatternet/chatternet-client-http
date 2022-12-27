@@ -69,9 +69,9 @@ export class MessageIter {
         try {
           inboxOut = await this.servers.getInbox(url, did, startIdx, this.pageSize);
         } catch {}
-        if (inboxOut == null) continue;
-        if (inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0)
+        if (inboxOut == null || inboxOut.nextStartIdx == null || inboxOut.messages.length <= 0)
           this.serverCursors[serverIdx].exhausted = true;
+        if (inboxOut == null) continue;
         this.serverCursors[serverIdx].startIdx = inboxOut.nextStartIdx;
         for (const message of inboxOut.messages) {
           if (this.messagesId.has(message.id)) continue;
