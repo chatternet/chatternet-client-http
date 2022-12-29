@@ -3,7 +3,8 @@ import { DateTime, Key, sign, verify } from "../signatures.js";
 import { getIsoDate } from "../utils.js";
 import { didFromActorId } from "./actor.js";
 import { CONTEXT, Context, Uri, WithId, isContext, isIterable, isUri } from "./utils.js";
-import { get, has, omit } from "lodash-es";
+import { get, has, isEqual, omit } from "lodash-es";
+import { CID } from "multiformats";
 
 const MAX_MESSAGE_URIS = 256;
 
@@ -70,9 +71,15 @@ export async function verifyMessage(message: Message): Promise<boolean> {
   const did = didFromActorId(message.actor);
   if (!did) return false;
   const id = message.id;
-  let messageNoId = omit(message, ["id"]);
-  let cid = (await buildDocCid(messageNoId)).toString();
-  if (`urn:cid:${cid}` !== id) return false;
+  if (!id.startsWith("urn:cid:")) return false;
+  let cid: CID | undefined = undefined;
+  try {
+    cid = CID.parse(id.slice(8));
+  } catch {}
+  if (cid == null) return false;
+  const messageNoId = omit(message, ["id"]);
+  const expectecCid = await buildDocCid(messageNoId);
+  if (!isEqual(cid.multihash.bytes, expectecCid.multihash.bytes)) return false;
   if (!(await verify(messageNoId, did))) return false;
   return true;
 }
