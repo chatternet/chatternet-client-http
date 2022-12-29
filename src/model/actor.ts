@@ -14,12 +14,14 @@ export interface ActorNoProof {
   following: Uri;
   followers: Uri;
   name?: string;
+  url?: string;
 }
 
 export type Actor = ActorNoProof & WithProof;
 
 export interface ActorOptions {
   name?: string;
+  url?: string;
 }
 
 export async function newActor(
