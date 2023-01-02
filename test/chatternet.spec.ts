@@ -372,6 +372,36 @@ describe("chatter net", () => {
     });
   });
 
+  it("iterates followers with server", async () => {
+    if (defaultServers.length <= 0) return;
+
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
+    const did3 = await ChatterNet.newAccount(await DidKey.newKey(), "name3", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    const chatterNet3 = await ChatterNet.new(did3, "abc", defaultServers);
+
+    // did2 follows did1
+    await chatterNet2.postMessageDocuments(
+      await chatterNet2.newFollow(ChatterNet.actorFromDid(did1))
+    );
+    // did3 follows did1
+    await chatterNet3.postMessageDocuments(
+      await chatterNet3.newFollow(ChatterNet.actorFromDid(did1))
+    );
+
+    // iterates followers
+    const iter = chatterNet1.buildFollowersIter();
+    const followers: string[] = [];
+    for await (const follower of iter.pageItems()) {
+      followers.push(follower);
+    }
+
+    assert.deepEqual(followers, [`${did3}/actor`, `${did2}/actor`, `${did1}/actor`]);
+  });
+
   it("gets local did", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");

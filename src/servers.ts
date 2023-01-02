@@ -8,8 +8,8 @@ export interface Server {
   knownIds: Set<string>;
 }
 
-export interface InboxOut {
-  messages: Model.Message[];
+export interface PageOut {
+  items: unknown[];
   nextStartIdx?: number;
 }
 
@@ -44,14 +44,14 @@ async function postDocument(document: Model.WithId, serverUrl: string): Promise<
   return await fetch(request);
 }
 
-async function getInbox(
-  did: string,
+async function getPaginated(
+  uri: string,
   serverUrl: string,
   startIdx?: number,
   pageSize?: number
 ): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${did}/actor/inbox`);
+  const url = new URL(`${serverUrl}/ap/${uri}`);
   if (startIdx) url.searchParams.set("startIdx", startIdx.toString());
   if (pageSize) url.searchParams.set("pageSize", pageSize.toString());
   const request = new Request(url, {
@@ -140,26 +140,20 @@ export class Servers {
     return +startIdx;
   }
 
-  async getInbox(
-    url: string,
-    did: string,
+  async getPaginated(
+    uri: string,
+    serverUrl: string,
     startIdx?: number,
     pageSize?: number
-  ): Promise<InboxOut> {
-    const server = this.urlsServer.get(url);
+  ): Promise<PageOut> {
+    const server = this.urlsServer.get(serverUrl);
     if (!server) throw Error("server URL is not known");
-    const response = await getInbox(did, url, startIdx, pageSize);
-    if (!response.ok) throw Error("unable to get inbox");
+    const response = await getPaginated(uri, serverUrl, startIdx, pageSize);
+    if (!response.ok) throw Error("unable to get paginated resource");
     const page: unknown = await response.json();
     const nextStartIdx = Servers.getNextStartIdxFromPage(page);
     const items: unknown = get(page, "items");
-    if (!Array.isArray(items)) throw Error("inbox message are incorrectly formatted");
-    const messages = items.filter(Model.isMessage);
-    // side effects
-    for (const message of messages) server.knownIds.add(message.id);
-    const messagesValid: Model.Message[] = [];
-    for (const message of messages)
-      if (await Model.verifyMessage(message)) messagesValid.push(message);
-    return { messages: messagesValid, nextStartIdx };
+    if (!Array.isArray(items)) throw Error("page is incorrectly formatted");
+    return { items, nextStartIdx };
   }
 }
