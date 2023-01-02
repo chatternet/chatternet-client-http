@@ -120,53 +120,89 @@ describe("servers", () => {
     resetFetch();
   });
 
-  it("gets inbox messages", async () => {
+  it("gets collection", async () => {
     resetFetch();
-    const key = await DidKey.newKey();
-    const did = DidKey.didFromKey(key);
-    const infos = [
-      { url: "http://a.example", did: "did:example:a" },
-      { url: "http://b.example", did: "did:example:b" },
-    ];
-    const message1 = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
-    const message2 = await Model.newMessage(did, ["urn:cid:b"], "Create", null, key);
-    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request = input as Request;
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${did}/actor/inbox`
-      )
-        return new Response(JSON.stringify({ items: [message1, message2] }));
-      return new Response(null, { status: 500 });
-    };
-    const servers = await Servers.fromInfos(infos);
-    const returnedMessages = await servers.getInbox("http://a.example", did);
-    assert.equal(message1.id, returnedMessages.messages[0].id);
-    assert.equal(message2.id, returnedMessages.messages[1].id);
-  });
 
-  it("doesnt get inbox invalid messages", async () => {
-    resetFetch();
-    const key = await DidKey.newKey();
-    const did = DidKey.didFromKey(key);
     const infos = [
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const message1 = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
-    message1.id = "urn:cid:abc";
-    const message2 = await Model.newMessage(did, ["urn:cid:b"], "Create", null, key);
+    const servers = await Servers.fromInfos(infos);
+
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${did}/actor/inbox`
-      )
-        return new Response(JSON.stringify({ items: [message1, message2] }));
-      return new Response(null, { status: 500 });
+      const notFound = new Response(null, { status: 404 });
+      if (request.method !== "GET") return notFound;
+      const url = new URL(request.url);
+      if (url.origin !== "http://a.example") return notFound;
+      if (url.pathname !== "/ap/resource-uri") return notFound;
+
+      let items = [];
+      const startIdx = url.searchParams.get("startIdx");
+      if (startIdx == null || startIdx === "3") items = ["item3", "item2", "item1"];
+      else if (startIdx === "2") items = ["item2", "item1"];
+      else if (startIdx === "1") items = ["item1"];
+      else return notFound;
+
+      const pageSize = url.searchParams.get("pageSize");
+      if (pageSize != null) items = items.slice(0, +pageSize);
+
+      let nextStartIdx = undefined;
+      if (items[items.length - 1] == "item3") nextStartIdx = 2;
+      if (items[items.length - 1] == "item2") nextStartIdx = 1;
+
+      return new Response(JSON.stringify({ items, nextStartIdx }));
     };
-    const servers = await Servers.fromInfos(infos);
-    const returnedMessages = await servers.getInbox("http://a.example", did);
-    assert.equal(message2.id, returnedMessages.messages[0].id);
+
+    {
+      const { items, nextStartIdx } = await servers.getPaginated(
+        "resource-uri",
+        "http://a.example"
+      );
+      assert.ok(!nextStartIdx);
+      assert.deepEqual(items, ["item3", "item2", "item1"]);
+    }
+
+    {
+      const { items, nextStartIdx } = await servers.getPaginated(
+        "resource-uri",
+        "http://a.example",
+        3
+      );
+      assert.ok(!nextStartIdx);
+      assert.deepEqual(items, ["item3", "item2", "item1"]);
+    }
+
+    {
+      const { items, nextStartIdx } = await servers.getPaginated(
+        "resource-uri",
+        "http://a.example",
+        undefined,
+        2
+      );
+      assert.ok(!nextStartIdx);
+      assert.deepEqual(items, ["item3", "item2"]);
+    }
+
+    {
+      const { items, nextStartIdx } = await servers.getPaginated(
+        "resource-uri",
+        "http://a.example",
+        2
+      );
+      assert.ok(!nextStartIdx);
+      assert.deepEqual(items, ["item2", "item1"]);
+    }
+
+    {
+      const { items, nextStartIdx } = await servers.getPaginated(
+        "resource-uri",
+        "http://a.example",
+        2,
+        1
+      );
+      assert.ok(!nextStartIdx);
+      assert.deepEqual(items, ["item2"]);
+    }
   });
 });

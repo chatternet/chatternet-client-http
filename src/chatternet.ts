@@ -2,6 +2,7 @@ import * as DidKey from "./didkey.js";
 import { MessageIter } from "./messageiter.js";
 import type { Actor, Message, WithId } from "./model/index.js";
 import * as Model from "./model/index.js";
+import { PageIter } from "./pageiter.js";
 import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
@@ -514,8 +515,26 @@ export class ChatterNet {
    *
    * @returns the message iterator
    */
-  async buildMessageIter(): Promise<MessageIter> {
-    return await MessageIter.new(this.getLocalDid(), this.servers, this.dbs.peer, 32);
+  buildMessageIter(): MessageIter {
+    const uri = `${this.getLocalDid()}/actor/inbox`;
+    const pageIter = PageIter.new<Model.Message>(uri, this.servers, 32, Model.isMessage);
+    return new MessageIter(this.dbs.peer, pageIter);
+  }
+
+  /**
+   * Build a new iterator over followers.
+   *
+   * This is an object which provides iteration over all followers of the local
+   * actor, pulled from all servers.
+   *
+   * @returns the followers iterator
+   */
+  buildFollowersIter(): PageIter<string> {
+    const uri = `${this.getLocalDid()}/actor/followers`;
+    const isString = function (x: unknown): x is string {
+      return typeof x === "string";
+    };
+    return PageIter.new<string>(uri, this.servers, 32, isString);
   }
 
   /**
