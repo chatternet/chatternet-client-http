@@ -3,10 +3,15 @@ import type { PageIter } from "./pageiter.js";
 import type { DbPeer } from "./storage.js";
 
 export class MessageIter {
+  private pageNumber: number = 0;
   private localIdx: number | undefined = undefined;
   private localExhausted: boolean = false;
 
   constructor(readonly dbPeer: DbPeer, readonly pageIter: PageIter<Model.Message>) {}
+
+  getPageNumber(): number {
+    return this.pageNumber;
+  }
 
   async *messages(): AsyncGenerator<Model.Message> {
     while (true) {
@@ -32,6 +37,8 @@ export class MessageIter {
         if (!(await Model.verifyMessage(message))) continue;
         yield message;
       }
+
+      this.pageNumber += 1;
     }
   }
 }

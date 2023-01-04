@@ -58,21 +58,21 @@ describe("message iter", () => {
     const pageIter = PageIter.new<Model.Message>(uri, servers, 2, Model.isMessage);
 
     const messageIter = new MessageIter(dbPeer, pageIter);
-    const objectsId: string[] = [];
+    const objectsId: [string, number][] = [];
     for await (const message of messageIter.messages()) {
-      objectsId.push(message.object[0]);
+      objectsId.push([message.object[0], messageIter.getPageNumber()]);
     }
     assert.deepEqual(objectsId, [
       // local messages first in reverse order
-      "urn:cid:l3",
-      "urn:cid:l2",
+      ["urn:cid:l3", 0],
+      ["urn:cid:l2", 0],
       // first page of server a (order sent by server)
-      "urn:cid:a3",
-      "urn:cid:a2",
+      ["urn:cid:a3", 0],
+      ["urn:cid:a2", 0],
       // second page of server a (order sent by server)
       // num cycles increases due to first full cycle
-      "urn:cid:l1",
-      "urn:cid:a1",
+      ["urn:cid:l1", 1],
+      ["urn:cid:a1", 1],
     ]);
   });
 });
