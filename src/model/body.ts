@@ -17,13 +17,14 @@ export interface BodyOptions {
 }
 
 export async function newBody(type: string, options: BodyOptions = {}): Promise<Body> {
-  const { content } = options;
+  const { content, mediaType } = options;
   if (type === "Note" && content != null && content.length > MAX_NOTE_CONTENT_BYTES)
     throw Error("note content is too long");
   const body: BodyNoId = {
     "@context": CONTEXT,
     type,
     content,
+    mediaType,
   };
   const cid = (await buildDocCid(body)).toString();
   const id = `urn:cid:${cid}`;
