@@ -9,12 +9,14 @@ interface BodyNoId {
   type: string;
   content?: string;
   mediaType?: string;
+  attributedTo?: Uri;
   inReplyTo?: Uri;
 }
 
 export interface BodyOptions {
   content?: string;
   mediaType?: string;
+  attributedTo?: string;
   inReplyTo?: string;
 }
 
