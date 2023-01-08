@@ -353,14 +353,16 @@ export class ChatterNet {
    * @param audience audiences to address the message to, defaults to local
    *   actor followers if none is provided
    * @param mediaType mime type of the content
+   * @param inReplyTo URI of message this is in reply to
    * @returns
    */
   async newNote(
     content: string,
     audience?: string[],
-    mediaType?: string
+    mediaType?: string,
+    inReplyTo?: string
   ): Promise<MessageDocuments> {
-    const note = await Model.newBody("Note", { content, mediaType });
+    const note = await Model.newBody("Note", { content, mediaType, inReplyTo });
     const message = await this.newMessage([note.id], "Create", audience);
     return { message, documents: [note] };
   }

@@ -20,6 +20,7 @@ describe("model body", () => {
     const objectDoc = await Model.newBody("Note", {
       content: "abc",
       mediaType: "text/html",
+      inReplyTo: "urn:cid:a",
     });
     assert.ok(await Model.verifyBody(objectDoc));
   });

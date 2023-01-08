@@ -1,5 +1,5 @@
 import { buildDocCid } from "../signatures.js";
-import { CONTEXT, Context, WithId, isContext, isUri } from "./utils.js";
+import { CONTEXT, Context, Uri, WithId, isContext, isUri } from "./utils.js";
 import { get, has, omit } from "lodash-es";
 
 const MAX_NOTE_CONTENT_BYTES = 1024;
@@ -9,22 +9,23 @@ interface BodyNoId {
   type: string;
   content?: string;
   mediaType?: string;
+  inReplyTo?: Uri;
 }
 
 export interface BodyOptions {
   content?: string;
   mediaType?: string;
+  inReplyTo?: string;
 }
 
 export async function newBody(type: string, options: BodyOptions = {}): Promise<Body> {
-  const { content, mediaType } = options;
+  const { content } = options;
   if (type === "Note" && content != null && content.length > MAX_NOTE_CONTENT_BYTES)
     throw Error("note content is too long");
   const body: BodyNoId = {
     "@context": CONTEXT,
     type,
-    content,
-    mediaType,
+    ...options,
   };
   const cid = (await buildDocCid(body)).toString();
   const id = `urn:cid:${cid}`;
@@ -46,5 +47,7 @@ export function isBody(x: unknown): x is Body {
   if (!isContext(get(x, "@context"))) return false;
   if (!isUri(get(x, "id"))) return false;
   if (!has(x, "type")) return false;
+  const inReplyTo = get(x, "inReplyTo");
+  if (inReplyTo != null && !isUri(inReplyTo)) return false;
   return true;
 }
