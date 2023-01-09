@@ -80,26 +80,38 @@ export class Servers {
   }
 
   async postMessage(message: Model.Message, did: string) {
+    let anySuccess = false;
     // messages are isomorphic to ID, can cache
     this.documentCache.set(message.id, message);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
-      if (knownIds.has(message.id)) continue;
-      await postMessage(message, did, url);
+      const response = await postMessage(message, did, url);
+      if (!response.ok) {
+        console.info("message failed to post to %s: %s", url, await response.text());
+        continue;
+      }
       knownIds.add(message.id);
+      anySuccess = true;
     }
+    if (!anySuccess) throw Error("message failed to post to any server");
   }
 
   async postDocument(document: Model.WithId) {
+    let anySuccess = false;
     if (document.id.startsWith("urn:cid:"))
       // object ID is a CID, it is isomorphic to its content, can cache
       this.documentCache.set(document.id, document);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
-      if (knownIds.has(document.id)) continue;
-      await postDocument(document, url);
+      const response = await postDocument(document, url);
+      if (!response.ok) {
+        console.info("document failed to post to %s: %s", url, await response.text());
+        continue;
+      }
       knownIds.add(document.id);
+      anySuccess = true;
     }
+    if (!anySuccess) throw Error("document failed to post to any server");
   }
 
   async getDocument(id: string): Promise<Model.WithId | undefined> {

@@ -10,7 +10,7 @@ describe("servers", () => {
     global.fetch = originalFetch;
   }
 
-  it("posts messages only once", async () => {
+  it("posts messages", async () => {
     resetFetch();
     const key = await DidKey.newKey();
     const did = DidKey.didFromKey(key);
@@ -28,14 +28,13 @@ describe("servers", () => {
     const servers = await Servers.fromInfos(infos);
     const message = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
     await servers.postMessage(message, did);
-    await servers.postMessage(message, did);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${did}/actor/outbox`,
       `http://b.example/ap/${did}/actor/outbox`,
     ]);
   });
 
-  it("posts objects only once", async () => {
+  it("posts objects", async () => {
     resetFetch();
     const infos = [
       { url: "http://a.example", did: "did:example:a" },
@@ -50,7 +49,6 @@ describe("servers", () => {
     };
     const servers = await Servers.fromInfos(infos);
     const objectDoc = await Model.newBody("Note");
-    await servers.postDocument(objectDoc);
     await servers.postDocument(objectDoc);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
