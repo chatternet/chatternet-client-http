@@ -85,7 +85,6 @@ export class Servers {
     this.documentCache.set(message.id, message);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
-      if (knownIds.has(message.id)) continue;
       const response = await postMessage(message, did, url);
       if (!response.ok) {
         console.info("message failed to post to %s: %s", url, await response.text());
@@ -104,7 +103,6 @@ export class Servers {
       this.documentCache.set(document.id, document);
     // keep the servers in sync by sharing all processed messages
     for (const { url, knownIds } of this.urlsServer.values()) {
-      if (knownIds.has(document.id)) continue;
       const response = await postDocument(document, url);
       if (!response.ok) {
         console.info("document failed to post to %s: %s", url, await response.text());
