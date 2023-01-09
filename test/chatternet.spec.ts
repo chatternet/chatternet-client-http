@@ -291,6 +291,29 @@ describe("chatter net", () => {
     assert.ok(new Set(messages3.map((x) => x.id)).has(viewMessage.id));
   });
 
+  it("doesnt post invalid message with server", async () => {
+    if (defaultServers.length <= 0) return;
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    const note = await chatterNet1.newNote("hello");
+    // sent from wrong account
+    assert.rejects(async () => await chatterNet2.postMessageDocuments(note));
+  });
+
+  it("doesnt post invalid document with server", async () => {
+    if (defaultServers.length <= 0) return;
+    await ChatterNet.clearDbs();
+    const did = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
+    const note = await chatterNet.newNote("hello");
+    // invalid document id
+    note.documents[0].id = "urn:cid:a";
+    assert.rejects(async () => await chatterNet.postMessageDocuments(note));
+  });
+
   it("posts and gets messages with local", async () => {
     await ChatterNet.clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");

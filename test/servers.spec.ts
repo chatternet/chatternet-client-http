@@ -28,7 +28,7 @@ describe("servers", () => {
     const servers = await Servers.fromInfos(infos);
     const message = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
     await servers.postMessage(message, did);
-    await servers.postMessage(message, did);
+    assert.rejects(async () => await servers.postMessage(message, did));
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${did}/actor/outbox`,
       `http://b.example/ap/${did}/actor/outbox`,
@@ -51,7 +51,7 @@ describe("servers", () => {
     const servers = await Servers.fromInfos(infos);
     const objectDoc = await Model.newBody("Note");
     await servers.postDocument(objectDoc);
-    await servers.postDocument(objectDoc);
+    assert.rejects(async () => await servers.postDocument(objectDoc));
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
       `http://b.example/ap/${objectDoc.id}`,
