@@ -138,7 +138,7 @@ export class Servers {
       }
       if (!response.ok) continue;
       const body: unknown = await response.json();
-      if (!Model.isBody(body)) continue;
+      if (!Model.isNote1k(body)) continue;
       server.knownIds.add(body.id);
       return body;
     }

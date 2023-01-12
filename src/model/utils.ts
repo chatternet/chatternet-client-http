@@ -21,10 +21,10 @@ export function isUri(x: unknown): x is Uri {
 
 export type ContextAstream = "https://www.w3.org/ns/activitystreams";
 export type ContextSignature = "https://w3id.org/security/suites/ed25519-2020/v1";
-export type Context = [ContextAstream, ContextSignature];
+export type Context = [ContextSignature, ContextAstream];
 export const CONTEXT: Context = [
-  "https://www.w3.org/ns/activitystreams",
   "https://w3id.org/security/suites/ed25519-2020/v1",
+  "https://www.w3.org/ns/activitystreams",
 ];
 export function isContext(x: unknown): x is Context {
   if (get(x, "length") != 2) return false;

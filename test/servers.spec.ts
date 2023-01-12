@@ -48,7 +48,7 @@ describe("servers", () => {
       return new Response();
     };
     const servers = await Servers.fromInfos(infos);
-    const objectDoc = await Model.newBody("Note");
+    const objectDoc = await Model.newNote1k("Note");
     await servers.postDocument(objectDoc);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
@@ -62,7 +62,7 @@ describe("servers", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const objectDoc = await Model.newBody("Note");
+    const objectDoc = await Model.newNote1k("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       if (
@@ -85,7 +85,7 @@ describe("servers", () => {
       { url: "http://b.example", did: "did:example:b" },
     ];
     let requestedUrls: string[] = [];
-    const objectDoc = await Model.newBody("Note");
+    const objectDoc = await Model.newNote1k("Note");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       requestedUrls.push(request.url.toString());
