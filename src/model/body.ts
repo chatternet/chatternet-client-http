@@ -18,7 +18,7 @@ export interface Note1kOptions {
 }
 
 export async function newNote1k(content: string, options: Note1kOptions = {}): Promise<Note1k> {
-  if (content.length > 1024) throw new Error("Content too long");
+  if (new TextEncoder().encode(content).length > 1024) throw new Error("Content too long");
   const body: Note1kNoId = {
     "@context": CONTEXT,
     type: "Note",
@@ -46,8 +46,7 @@ export function isNote1k(x: unknown): x is Note1k {
   const content = get(x, "content");
   if (content == null) return false;
   if (typeof content !== "string") return false;
-  // @ts-ignore
-  if (content.len > 1024) return false;
+  if (new TextEncoder().encode(content).length > 1024) return false;
   const inReplyTo = get(x, "inReplyTo");
   if (inReplyTo != null && !isUri(inReplyTo)) return false;
   return true;
