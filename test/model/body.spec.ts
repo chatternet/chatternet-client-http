@@ -8,29 +8,32 @@ describe("model body", () => {
     const objectDoc = {
       "@context": CONTEXT,
       id: "a:b",
-      type: "abc",
+      type: "Note",
+      content: "abcd",
     };
-    assert.ok(Model.isBody(objectDoc));
-    assert.ok(!Model.isBody(omit(objectDoc, "@context")));
-    assert.ok(!Model.isBody(omit(objectDoc, "id")));
-    assert.ok(!Model.isBody(omit(objectDoc, "type")));
+    assert.ok(Model.isNote1k(objectDoc));
+    assert.ok(!Model.isNote1k(omit(objectDoc, "@context")));
+    assert.ok(!Model.isNote1k(omit(objectDoc, "id")));
+    assert.ok(!Model.isNote1k(omit(objectDoc, "type")));
+    assert.ok(!Model.isNote1k(omit(objectDoc, "content")));
   });
 
-  it("builds and verifies a body", async () => {
-    const objectDoc = await Model.newBody("Note", {
-      content: "abc",
+  it("builds and verifies a note", async () => {
+    const objectDoc = await Model.newNote1k("abc", {
       mediaType: "text/html",
       attributedTo: "did:example:a",
       inReplyTo: "urn:cid:a",
     });
-    assert.ok(await Model.verifyBody(objectDoc));
+    assert.ok(await Model.verifyNote1k(objectDoc));
   });
 
-  it("doesnt verify a body with invalid content", async () => {
-    const objectDoc = await Model.newBody("Note", {
-      content: "abc",
-    });
+  it("doesnt build a note with content too long", async () => {
+    assert.rejects(async () => await Model.newNote1k("a".repeat(1024 + 1)));
+  });
+
+  it("doesnt verify a note with invalid content", async () => {
+    const objectDoc = await Model.newNote1k("abc");
     objectDoc.content = "abcd";
-    assert.ok(!(await Model.verifyBody(objectDoc)));
+    assert.ok(!(await Model.verifyNote1k(objectDoc)));
   });
 });

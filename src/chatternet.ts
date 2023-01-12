@@ -364,7 +364,7 @@ export class ChatterNet {
   ): Promise<MessageDocuments> {
     const did = this.getLocalDid();
     const attributedTo = ChatterNet.actorFromDid(did);
-    const note = await Model.newBody("Note", { content, mediaType, attributedTo, inReplyTo });
+    const note = await Model.newNote1k(content, { mediaType, attributedTo, inReplyTo });
     const message = await this.newMessage([note.id], "Create", audience);
     return { message, documents: [note] };
   }
