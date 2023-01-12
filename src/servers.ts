@@ -1,4 +1,5 @@
-import * as Model from "./model/index.js";
+import type * as Model from "./model/index.js";
+import { isWithId } from "./model/utils.js";
 import type { ServerInfo } from "./storage.js";
 import { get } from "lodash-es";
 
@@ -138,7 +139,8 @@ export class Servers {
       }
       if (!response.ok) continue;
       const body: unknown = await response.json();
-      if (!Model.isNote1k(body)) continue;
+      // TODO: create property body model and test that
+      if (!isWithId(body)) continue;
       server.knownIds.add(body.id);
       return body;
     }

@@ -1,10 +1,14 @@
 import type { Proof } from "../signatures.js";
-import { get } from "lodash-es";
+import { get, has } from "lodash-es";
 
 const MAX_URI_BYTES = 2048;
 
 export interface WithId {
   id: string;
+}
+export function isWithId(x: unknown): x is WithId {
+  if (!has(x, "id")) return false;
+  return true;
 }
 
 export interface WithProof {
