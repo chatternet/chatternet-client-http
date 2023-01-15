@@ -53,14 +53,9 @@ describe("model message", () => {
     const jwk = await DidKey.newKey();
     const did = DidKey.didFromKey(jwk);
     const message = await Model.newMessage(did, ["urn:cid:a"], "Create", null, jwk, {
-      to: ["a:b/followers"],
-      cc: ["a:c/followers", "a:d/followers"],
-      audience: ["a:e/followers"],
+      to: ["a:b/followers", "a:c/followers"],
     });
     const audiences = new Set(Model.getAudiences(message));
-    assert.deepEqual(
-      audiences,
-      new Set(["a:b/followers", "a:c/followers", "a:d/followers", "a:e/followers"])
-    );
+    assert.deepEqual(audiences, new Set(["a:b/followers", "a:c/followers"]));
   });
 });

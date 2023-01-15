@@ -230,6 +230,11 @@ class StoreFollow {
     await transaction.store.put(record);
   }
 
+  async delete(id: string): Promise<void> {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    await transaction.store.delete(id);
+  }
+
   async get(url: string): Promise<RecordFollow | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
     return await transaction.store.get(url);
