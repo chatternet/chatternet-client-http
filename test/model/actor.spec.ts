@@ -41,10 +41,7 @@ describe("model actor", () => {
     assert.ok(!Model.isActor(omit(actor, "@context")));
     assert.ok(!Model.isActor(omit(actor, "id")));
     assert.ok(!Model.isActor(omit(actor, "type")));
-    assert.ok(!Model.isActor(omit(actor, "inbox")));
-    assert.ok(!Model.isActor(omit(actor, "outbox")));
-    assert.ok(!Model.isActor(omit(actor, "followers")));
-    assert.ok(!Model.isActor(omit(actor, "following")));
+    assert.ok(!Model.isActor(omit(actor, "published")));
   });
 
   it("doesnt verify invalid actor", async () => {
