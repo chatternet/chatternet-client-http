@@ -157,7 +157,10 @@ export class ChatterNet {
     chatterNet.storeMessageDocuments(actorMessageDocuments);
     chatterNet.postMessageDocuments(actorMessageDocuments).catch(() => {});
     // tell the server about the actor follows
-    chatterNet.postMessageDocuments(await chatterNet.buildFollows()).catch(() => {});
+    (async () => {
+      await chatterNet.postMessageDocuments(await chatterNet.buildClearFollows());
+      await chatterNet.postMessageDocuments(await chatterNet.buildSetFollows());
+    })().catch(() => {});
 
     return chatterNet;
   }
@@ -194,22 +197,38 @@ export class ChatterNet {
   }
 
   /**
-   * Build the message listing the local actor's follows.
+   * Build the message clearing all of the local actor's follows on the server
+   * handling the message.
    *
-   * @returns `Collection` with the `items` property listing the followed IDs.
+   * This message has no audience and will not propagate. It will affect only
+   * the state of the servers it is directly sent to.
    */
-  async buildFollows(): Promise<MessageDocuments> {
-    const actorId = ChatterNet.actorFromDid(this.getLocalDid());
-    // follow all followed IDs from the local store, and self
-    const follows = [...new Set([...(await this.dbs.peer.follow.getAll()), actorId])];
-    const message = await this.newMessage(follows, "Follow", []);
+  async buildClearFollows(): Promise<MessageDocuments> {
+    const did = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(did);
+    const target = [`${actorId}/following`];
+    const message = await Model.newMessage(did, target, "Delete", null, this.key);
+    return { message, documents: [] };
+  }
+
+  /**
+   * Build the message setting all of the local actor's follows on the server
+   * handling the message.
+   *
+   * This message has no audience and will not propagate. It will affect only
+   * the state of the servers it is directly sent to.
+   */
+  async buildSetFollows(): Promise<MessageDocuments> {
+    const did = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(did);
+    const ids = [...new Set([...(await this.dbs.peer.follow.getAll()), actorId])];
+    const target = [`${actorId}/following`];
+    const message = await Model.newMessage(did, ids, "Add", null, this.key, { target });
     return { message, documents: [] };
   }
 
   /**
    * Build the message describing the local actor.
-   *
-   * @returns `Collection` with the `items` property listing the followed IDs.
    */
   async buildActor(): Promise<MessageDocuments> {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
@@ -312,16 +331,16 @@ export class ChatterNet {
    * This is a local operation.
    *
    * @param ids list of message objects IDs
-   * @param audience audiences to address the message to, defaults to local
+   * @param to audiences to address the message to, defaults to local
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newMessage(ids: string[], type: string, audience?: string[]): Promise<Message> {
+  async newMessage(ids: string[], type: string, to?: string[]): Promise<Message> {
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
-    audience = audience ? audience : [actorFollowers];
-    return await Model.newMessage(did, ids, type, null, this.key, { audience });
+    to = to ? to : [actorFollowers];
+    return await Model.newMessage(did, ids, type, null, this.key, { to });
   }
 
   /**
@@ -331,17 +350,17 @@ export class ChatterNet {
    * This is a local operation.
    *
    * @param ids list of message objects IDs
-   * @param audience audiences to address the message to, defaults to local
+   * @param to audiences to address the message to, defaults to local
    *   actor followers if none is provided
    * @returns the signed message
    */
-  async newDelete(messageId: string, audience?: string[]): Promise<Message | undefined> {
+  async newDelete(messageId: string, to?: string[]): Promise<Message | undefined> {
     const message = await this.dbs.peer.document.get(messageId);
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
     if (!message) return;
     if (!Model.isMessage(message)) return;
     if (message.actor != actorId) return;
-    return await this.newMessage([messageId], "Delete", audience);
+    return await this.newMessage([messageId], "Delete", to);
   }
 
   /**
@@ -350,7 +369,7 @@ export class ChatterNet {
    * This is a local operation.
    *
    * @param content the string content of the note
-   * @param audience audiences to address the message to, defaults to local
+   * @param to audiences to address the message to, defaults to local
    *   actor followers if none is provided
    * @param mediaType mime type of the content
    * @param inReplyTo URI of message this is in reply to
@@ -358,14 +377,14 @@ export class ChatterNet {
    */
   async newNote(
     content: string,
-    audience?: string[],
+    to?: string[],
     mediaType?: string,
     inReplyTo?: string
   ): Promise<MessageDocuments> {
     const did = this.getLocalDid();
     const attributedTo = ChatterNet.actorFromDid(did);
     const note = await Model.newNote1k(content, { mediaType, attributedTo, inReplyTo });
-    const message = await this.newMessage([note.id], "Create", audience);
+    const message = await this.newMessage([note.id], "Create", to);
     return { message, documents: [note] };
   }
 
@@ -382,17 +401,42 @@ export class ChatterNet {
    * local actor, meaning that the servers will route messages authored by `id`
    * to the local actor.
    *
+   * This message has no audience and will not propagate. It will affect only
+   * the state of the servers it is directly sent to.
+   *
    * @param id ID followed by the actor
-   * @param audience audiences to address the message to, defaults to local
-   *   actor followers and followed Id followers if none is provided
    * @returns the message and object to send
    */
-  async newFollow(id: string, audience?: string[]): Promise<MessageDocuments> {
+  async newFollow(id: string): Promise<MessageDocuments> {
     await this.dbs.peer.follow.put(id);
-    const actorFollowers = ChatterNet.followersFromId(ChatterNet.actorFromDid(this.getLocalDid()));
-    const idFollowers = ChatterNet.followersFromId(id);
-    audience = audience ? audience : [actorFollowers, idFollowers];
-    const message = await this.newMessage([id], "Follow", audience);
+    const did = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(did);
+    const target = [`${actorId}/following`];
+    const message = await Model.newMessage(did, [id], "Add", null, this.key, { target });
+    return { message, documents: [] };
+  }
+
+  /**
+   * Build a new un-follow.
+   *
+   * This is a local operation.
+   *
+   * The resulting message will tell the network that the local actor is
+   * no longer following the given `id`. The server will remove the local
+   * actor from the `followers` collection of the given `id`.
+   *
+   * This message has no audience and will not propagate. It will affect only
+   * the state of the servers it is directly sent to.
+   *
+   * @param id ID followed by the actor
+   * @returns the message and object to send
+   */
+  async newUnfollow(id: string): Promise<MessageDocuments> {
+    await this.dbs.peer.follow.delete(id);
+    const did = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(did);
+    const target = [`${actorId}/following`];
+    const message = await Model.newMessage(did, [id], "Remove", null, this.key, { target });
     return { message, documents: [] };
   }
 
@@ -407,18 +451,18 @@ export class ChatterNet {
    * their ability to get messages from the local actor.
    *
    * @param id ID of the listened server actor
-   * @param audience audiences to address the message to, defaults to local
+   * @param to audiences to address the message to, defaults to local
    *   actor followers and followers of the listened actor if none is provided
    * @returns the message and object to send
    */
-  async newListen(did: string, audience?: string[]): Promise<MessageDocuments> {
+  async newListen(did: string, to?: string[]): Promise<MessageDocuments> {
     const actorDid = this.getLocalDid();
     const actorActorId = ChatterNet.actorFromDid(actorDid);
     const actorFollowers = ChatterNet.followersFromId(actorActorId);
-    audience = audience ? audience : [actorFollowers];
+    to = to ? to : [actorFollowers];
     const serverActorId = ChatterNet.actorFromDid(did);
     const message = await Model.newMessage(actorDid, [serverActorId], "Listen", null, this.key, {
-      audience,
+      to,
     });
     return { message, documents: [] };
   }
@@ -433,11 +477,11 @@ export class ChatterNet {
    * message.
    *
    * @param message the message viewed by the local actor
-   * @param audience audiences to address the message to, defaults to local
+   * @param to audiences to address the message to, defaults to local
    *   actor followers if none is provided
    * @returns the message and object to send
    */
-  async getOrNewViewMessage(message: Message, audience?: string[]): Promise<Message | undefined> {
+  async getOrNewViewMessage(message: Message, to?: string[]): Promise<Message | undefined> {
     // don't view messages from self
     const actorDid = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(actorDid);
@@ -451,10 +495,10 @@ export class ChatterNet {
     if (prevView != null) return prevView;
 
     const actorFollowers = ChatterNet.followersFromId(actorId);
-    audience = audience ? audience : [actorFollowers];
+    to = to ? to : [actorFollowers];
     const view = await Model.newMessage(actorDid, message.object, "View", null, this.key, {
-      origin: message.id,
-      audience,
+      origin: [message.id],
+      to,
     });
     await this.dbs.peer.viewMessage.put(view);
     return view;

@@ -26,9 +26,8 @@ interface MessageNoIdProof {
   object: Uri[];
   published: DateTime;
   to?: Uri[];
-  cc?: Uri[];
-  audience?: Uri[];
-  origin?: Uri;
+  origin?: Uri[];
+  target?: Uri[];
 }
 
 type MessageNoId = MessageNoIdProof & WithProof;
@@ -36,9 +35,8 @@ export type Message = MessageNoId & WithId;
 
 export interface MessageOptions {
   to?: Uri[];
-  cc?: Uri[];
-  audience?: Uri[];
-  origin?: Uri;
+  origin?: Uri[];
+  target?: Uri[];
 }
 
 export async function newMessage(
@@ -102,11 +100,7 @@ export function isMessage(x: unknown): x is Message {
 
 export function getAudiences(message: Message): Uri[] {
   let audiences: Set<Uri> = new Set();
-  let sources = [message.to, message.cc, message.audience];
-  for (let source of sources) {
-    if (!source) continue;
-    const sourceList = Array.isArray(source) ? source : [source];
-    sourceList.filter((x) => isUri(x)).forEach((x) => audiences.add(x));
-  }
+  if (message.to == null) return [];
+  message.to.filter((x) => isUri(x)).forEach((x) => audiences.add(x));
   return [...audiences.values()];
 }

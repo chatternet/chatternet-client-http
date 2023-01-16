@@ -133,24 +133,31 @@ describe("chatter net", () => {
     assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
   });
 
-  it("adds follow and builds follows", async () => {
+  it("follows unfollows and lists follows", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      const { message } = await chatterNet.buildFollows();
-      assert.deepEqual(new Set(message.object), new Set([`${did}/actor`]));
-    }
-    {
-      const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
       const { message } = await chatterNet.newFollow("id:a");
-      assert.equal(message.type, "Follow");
+      assert.equal(message.type, "Add");
       assert.deepEqual(message.object, ["id:a"]);
+      assert.deepEqual(message.target, [`${did}/actor/following`]);
     }
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      const { message } = await chatterNet.buildFollows();
-      assert.deepEqual(new Set(message.object), new Set([`${did}/actor`, "id:a"]));
+      await chatterNet.newFollow("id:b");
+    }
+    {
+      const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
+      const { message } = await chatterNet.newUnfollow("id:a");
+      assert.equal(message.type, "Remove");
+      assert.deepEqual(message.object, ["id:a"]);
+      assert.deepEqual(message.target, [`${did}/actor/following`]);
+    }
+    {
+      const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
+      const { message } = await chatterNet.buildSetFollows();
+      assert.deepEqual(new Set(message.object), new Set([`${did}/actor`, "id:b"]));
     }
   });
 
@@ -173,7 +180,7 @@ describe("chatter net", () => {
     const message = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(message);
     assert.equal(message.type, "View");
-    assert.deepEqual(message.origin, origin.id);
+    assert.deepEqual(message.origin, [origin.id]);
     assert.deepEqual(message.object, ["id:a"]);
   });
 
@@ -422,7 +429,10 @@ describe("chatter net", () => {
       followers.push(follower);
     }
 
-    assert.deepEqual(followers, [`${did3}/actor`, `${did2}/actor`, `${did1}/actor`]);
+    assert.deepEqual(
+      new Set(followers),
+      new Set([`${did3}/actor`, `${did2}/actor`, `${did1}/actor`])
+    );
   });
 
   it("gets local did", async () => {

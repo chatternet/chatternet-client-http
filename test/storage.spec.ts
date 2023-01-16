@@ -86,13 +86,15 @@ describe("storage", () => {
       ]);
     });
 
-    it("puts and gets follow", async () => {
+    it("puts gets deletes follow", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
       await db.follow.put("did:example:a");
       await db.follow.put("did:example:a");
       await db.follow.put("did:example:b");
-      assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:b"]);
+      await db.follow.put("did:example:c");
+      await db.follow.delete("did:example:b");
+      assert.deepEqual(await db.follow.getAll(), ["did:example:a", "did:example:c"]);
     });
 
     it("puts gets deletes message ids", async () => {
