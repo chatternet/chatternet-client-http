@@ -119,8 +119,8 @@ describe("storage", () => {
     it("puts gets deletes object doc", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      const doc1 = await Model.newNote1k("abc");
-      const doc2 = await Model.newNote1k("abcd");
+      const doc1 = await Model.newNoteMd1k("abc", "did:example:a");
+      const doc2 = await Model.newNoteMd1k("abcd", "did:example:a");
       await db.document.put(doc1);
       await db.document.put(doc2);
       await db.document.put(doc2);

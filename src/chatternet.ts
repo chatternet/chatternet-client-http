@@ -375,15 +375,10 @@ export class ChatterNet {
    * @param inReplyTo URI of message this is in reply to
    * @returns
    */
-  async newNote(
-    content: string,
-    to?: string[],
-    mediaType?: string,
-    inReplyTo?: string
-  ): Promise<MessageDocuments> {
+  async newNote(content: string, to?: string[], inReplyTo?: string): Promise<MessageDocuments> {
     const did = this.getLocalDid();
     const attributedTo = ChatterNet.actorFromDid(did);
-    const note = await Model.newNote1k(content, { mediaType, attributedTo, inReplyTo });
+    const note = await Model.newNoteMd1k(content, attributedTo, { inReplyTo });
     const message = await this.newMessage([note.id], "Create", to);
     return { message, documents: [note] };
   }
