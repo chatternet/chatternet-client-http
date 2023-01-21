@@ -2,27 +2,31 @@ import { buildDocCid } from "../signatures.js";
 import { CONTEXT, Context, Uri, WithId, isContext, isUri } from "./utils.js";
 import { get, omit } from "lodash-es";
 
-interface Note1kNoId {
+interface NoteMd1kNoId {
   "@context": Context;
   type: string;
   content: string;
-  mediaType?: string;
-  attributedTo?: Uri;
+  mediaType: "text/markdown";
+  attributedTo: Uri;
   inReplyTo?: Uri;
 }
 
-export interface Note1kOptions {
-  mediaType?: string;
-  attributedTo?: string;
+export interface NoteMd1kOptions {
   inReplyTo?: string;
 }
 
-export async function newNote1k(content: string, options: Note1kOptions = {}): Promise<Note1k> {
+export async function newNoteMd1k(
+  content: string,
+  attributedTo: string,
+  options: NoteMd1kOptions = {}
+): Promise<NoteMd1k> {
   if (new TextEncoder().encode(content).length > 1024) throw new Error("Content too long");
-  const body: Note1kNoId = {
+  const body: NoteMd1kNoId = {
     "@context": CONTEXT,
     type: "Note",
     content,
+    mediaType: "text/markdown",
+    attributedTo,
     ...options,
   };
   const cid = (await buildDocCid(body)).toString();
@@ -30,16 +34,16 @@ export async function newNote1k(content: string, options: Note1kOptions = {}): P
   return { id, ...body };
 }
 
-export async function verifyNote1k(body: Note1k): Promise<boolean> {
+export async function verifyNoteMd1k(body: NoteMd1k): Promise<boolean> {
   const objectDocNoId = omit(body, ["id"]);
   const cid = (await buildDocCid(objectDocNoId)).toString();
   if (`urn:cid:${cid}` !== body.id) return false;
   return true;
 }
 
-export type Note1k = Note1kNoId & WithId;
+export type NoteMd1k = NoteMd1kNoId & WithId;
 
-export function isNote1k(x: unknown): x is Note1k {
+export function isNoteMd1k(x: unknown): x is NoteMd1k {
   if (!isContext(get(x, "@context"))) return false;
   if (!isUri(get(x, "id"))) return false;
   if (get(x, "type") !== "Note") return false;
@@ -47,6 +51,8 @@ export function isNote1k(x: unknown): x is Note1k {
   if (content == null) return false;
   if (typeof content !== "string") return false;
   if (new TextEncoder().encode(content).length > 1024) return false;
+  if (get(x, "mediaType") !== "text/markdown") return false;
+  if (!isUri(get(x, "attributedTo"))) return false;
   const inReplyTo = get(x, "inReplyTo");
   if (inReplyTo != null && !isUri(inReplyTo)) return false;
   return true;

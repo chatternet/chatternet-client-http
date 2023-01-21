@@ -48,7 +48,7 @@ describe("servers", () => {
       return new Response();
     };
     const servers = await Servers.fromInfos(infos);
-    const objectDoc = await Model.newNote1k("Note");
+    const objectDoc = await Model.newNoteMd1k("Note", "did:example:a");
     await servers.postDocument(objectDoc);
     assert.deepEqual(requestedUrls, [
       `http://a.example/ap/${objectDoc.id}`,
@@ -62,7 +62,7 @@ describe("servers", () => {
       { url: "http://a.example", did: "did:example:a" },
       { url: "http://b.example", did: "did:example:b" },
     ];
-    const objectDoc = await Model.newNote1k("Note");
+    const objectDoc = await Model.newNoteMd1k("Note", "did:example:a");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       if (
@@ -78,6 +78,32 @@ describe("servers", () => {
     assert.deepEqual(returnedBody, JSON.parse(JSON.stringify(objectDoc)));
   });
 
+  it("gets create message for an object", async () => {
+    resetFetch();
+    const infos = [
+      { url: "http://a.example", did: "did:example:a" },
+      { url: "http://b.example", did: "did:example:b" },
+    ];
+    const objectId = "urn:cid:1";
+    const jwk = await DidKey.newKey();
+    const did = DidKey.didFromKey(jwk);
+    const actorId = `${did}/actor`;
+    const message = await Model.newMessage(actorId, [objectId], "Create", null, jwk);
+    global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input as Request;
+      if (
+        request.method === "GET" &&
+        request.url.toString() === `http://a.example/ap/${objectId}/createdBy/${actorId}`
+      )
+        return new Response(JSON.stringify(message));
+      return new Response(null, { status: 500 });
+    };
+    const servers = await Servers.fromInfos(infos);
+
+    const returned = await servers.getCreateMessageForDocument(objectId, actorId);
+    assert.deepEqual(returned, JSON.parse(JSON.stringify(message)));
+  });
+
   it("get object from server that already had it", async () => {
     resetFetch();
     const infos = [
@@ -85,7 +111,7 @@ describe("servers", () => {
       { url: "http://b.example", did: "did:example:b" },
     ];
     let requestedUrls: string[] = [];
-    const objectDoc = await Model.newNote1k("Note");
+    const objectDoc = await Model.newNoteMd1k("Note", "did:example:a");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       requestedUrls.push(request.url.toString());

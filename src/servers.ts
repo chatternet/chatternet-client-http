@@ -1,4 +1,4 @@
-import type * as Model from "./model/index.js";
+import * as Model from "./model/index.js";
 import { isWithId } from "./model/utils.js";
 import type { ServerInfo } from "./storage.js";
 import { get } from "lodash-es";
@@ -70,6 +70,19 @@ async function getBody(id: string, serverUrl: string): Promise<Response> {
   return await fetch(request);
 }
 
+async function getCreateMessageForDocument(
+  id: string,
+  actorId: string,
+  serverUrl: string
+): Promise<Response> {
+  serverUrl = serverUrl.replace(/\/$/, "");
+  const url = new URL(`${serverUrl}/ap/${id}/createdBy/${actorId}`);
+  const request = new Request(url, {
+    method: "GET",
+  });
+  return await fetch(request);
+}
+
 export class Servers {
   constructor(
     readonly urlsServer: Map<string, Server>,
@@ -115,11 +128,7 @@ export class Servers {
     if (!anySuccess) throw Error("document failed to post to any server");
   }
 
-  async getDocument(id: string): Promise<Model.WithId | undefined> {
-    // first try the local cache
-    const local = this.documentCache.get(id);
-    if (local != null) return local;
-
+  sortServersByKnownId(id: string): Server[] {
     // want to iterate starting with most likely to have doc
     const servers = [...this.urlsServer.values()];
     servers.sort((a, b) => {
@@ -129,6 +138,15 @@ export class Servers {
       if (!a.knownIds.has(id) && b.knownIds.has(id)) return +1;
       return 0;
     });
+    return servers;
+  }
+
+  async getDocument(id: string): Promise<Model.WithId | undefined> {
+    // first try the local cache
+    const local = this.documentCache.get(id);
+    if (local != null) return local;
+
+    const servers = this.sortServersByKnownId(id);
 
     for (const server of servers) {
       let response: Response;
@@ -140,9 +158,31 @@ export class Servers {
       if (!response.ok) continue;
       const body: unknown = await response.json();
       // TODO: create property body model and test that
+      // TODO: validate ID
       if (!isWithId(body)) continue;
       server.knownIds.add(body.id);
       return body;
+    }
+  }
+
+  async getCreateMessageForDocument(
+    id: string,
+    actorId: string
+  ): Promise<Model.Message | undefined> {
+    const servers = this.sortServersByKnownId(id);
+
+    for (const server of servers) {
+      let response: Response;
+      try {
+        response = await getCreateMessageForDocument(id, actorId, server.url);
+      } catch {
+        continue;
+      }
+      if (!response.ok) continue;
+      const message: unknown = await response.json();
+      if (!Model.isMessage(message)) continue;
+      if (!(await Model.verifyMessage(message))) continue;
+      return message;
     }
   }
 

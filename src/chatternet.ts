@@ -375,15 +375,10 @@ export class ChatterNet {
    * @param inReplyTo URI of message this is in reply to
    * @returns
    */
-  async newNote(
-    content: string,
-    to?: string[],
-    mediaType?: string,
-    inReplyTo?: string
-  ): Promise<MessageDocuments> {
+  async newNote(content: string, to?: string[], inReplyTo?: string): Promise<MessageDocuments> {
     const did = this.getLocalDid();
     const attributedTo = ChatterNet.actorFromDid(did);
-    const note = await Model.newNote1k(content, { mediaType, attributedTo, inReplyTo });
+    const note = await Model.newNoteMd1k(content, attributedTo, { inReplyTo });
     const message = await this.newMessage([note.id], "Create", to);
     return { message, documents: [note] };
   }
@@ -537,6 +532,21 @@ export class ChatterNet {
     // then from servers
     if (!document) document = await this.servers.getDocument(id);
     return document;
+  }
+
+  /**
+   * Get an object from the global network state.
+   *
+   * The mapping of object to message is not maintained locally, so this
+   * requires a request to the servers.
+   *
+   * @param id the actor ID
+   * @param actorId the ID of the actor which created the message
+   * @returns the create message
+   */
+  async getCreateMessageForDocument(id: string, actorId: string): Promise<Message | undefined> {
+    const message = await this.servers.getCreateMessageForDocument(id, actorId);
+    return message;
   }
 
   /**
