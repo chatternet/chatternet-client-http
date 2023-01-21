@@ -298,6 +298,21 @@ describe("chatter net", () => {
     assert.ok(new Set(messages3.map((x) => x.id)).has(viewMessage.id));
   });
 
+  it("gets messages from actor with server", async () => {
+    if (defaultServers.length <= 0) return;
+    await ChatterNet.clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    // did1 posts
+    const note = await chatterNet1.newNote("Hi!");
+    await chatterNet1.postMessageDocuments(note);
+    // iterates message
+    const messages = await listMessages(await chatterNet2.buildMessageIterFrom(`${did1}/actor`));
+    assert.ok(new Set(messages.map((x) => x.id)).has(note.message.id));
+  });
+
   it("doesnt post invalid message with server", async () => {
     if (defaultServers.length <= 0) return;
     await ChatterNet.clearDbs();

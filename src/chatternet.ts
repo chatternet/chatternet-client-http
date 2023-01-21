@@ -570,6 +570,20 @@ export class ChatterNet {
   }
 
   /**
+   * Build a new message iterator for the local actor iterating over only
+   * messages from actor `actor_id`.
+   *
+   * See to [`buildMessageIter`].
+   *
+   * @returns the message iterator
+   */
+  buildMessageIterFrom(actorId: string): MessageIter {
+    const uri = `${this.getLocalDid()}/actor/inbox/from/${actorId}`;
+    const pageIter = PageIter.new<Model.Message>(uri, this.servers, 32, Model.isMessage);
+    return new MessageIter(this.dbs.peer, pageIter);
+  }
+
+  /**
    * Build a new iterator over followers.
    *
    * This is an object which provides iteration over all followers of the local
