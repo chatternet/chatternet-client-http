@@ -535,6 +535,21 @@ export class ChatterNet {
   }
 
   /**
+   * Get an object from the global network state.
+   *
+   * The mapping of object to message is not maintained locally, so this
+   * requires a request to the servers.
+   *
+   * @param id the actor ID
+   * @param actorId the ID of the actor which created the message
+   * @returns the create message
+   */
+  async getCreateMessageForDocument(id: string, actorId: string): Promise<Message | undefined> {
+    const message = await this.servers.getCreateMessageForDocument(id, actorId);
+    return message;
+  }
+
+  /**
    * Get an actor from the global network state.
    *
    * This will get a document and validate that it is a valid `Actor` object.
