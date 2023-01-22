@@ -417,18 +417,12 @@ describe("chatter net", () => {
       fromContact: true,
       inAudience: true,
     });
-    const viewMessage = await chatterNet2.getOrNewViewMessage(noteMessage);
-    assert.ok(viewMessage);
 
     // did3 follows did2
     await chatterNet3.newFollow(ChatterNet.actorFromDid(did2));
     assert.deepEqual(await chatterNet3.buildMessageAffinity(noteMessage), {
       fromContact: false,
       inAudience: false,
-    });
-    assert.deepEqual(await chatterNet3.buildMessageAffinity(viewMessage), {
-      fromContact: true,
-      inAudience: true,
     });
   });
 

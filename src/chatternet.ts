@@ -472,11 +472,9 @@ export class ChatterNet {
    * message.
    *
    * @param message the message viewed by the local actor
-   * @param to audiences to address the message to, defaults to local
-   *   actor followers if none is provided
    * @returns the message and object to send
    */
-  async getOrNewViewMessage(message: Message, to?: string[]): Promise<Message | undefined> {
+  async getOrNewViewMessage(message: Message): Promise<Message | undefined> {
     // don't view messages from self
     const actorDid = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(actorDid);
@@ -489,11 +487,9 @@ export class ChatterNet {
     const prevView = await this.dbs.peer.viewMessage.get(objectId);
     if (prevView != null) return prevView;
 
-    const actorFollowers = ChatterNet.followersFromId(actorId);
-    to = to ? to : [actorFollowers];
     const view = await Model.newMessage(actorDid, message.object, "View", null, this.key, {
       origin: [message.id],
-      to,
+      to: message.to,
     });
     await this.dbs.peer.viewMessage.put(view);
     return view;
