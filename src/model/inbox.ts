@@ -1,8 +1,8 @@
 import type { Message } from "./messages.js";
-import { CONTEXT, Context, Uri } from "./utils.js";
+import { CONTEXT_SIG_STREAM, ContextSigStream, Uri } from "./utils.js";
 
 export interface Inbox {
-  "@context": Context;
+  "@context": ContextSigStream;
   id: Uri;
   type: "OrderedCollection";
   items: Message[];
@@ -22,7 +22,7 @@ export function newInbox(
   const next =
     endIdx != null ? `${actorId}/inbox?startIdx=${endIdx}&pageSize=${pageSize}` : undefined;
   return {
-    "@context": CONTEXT,
+    "@context": CONTEXT_SIG_STREAM,
     id,
     type: "OrderedCollection",
     items: messages,

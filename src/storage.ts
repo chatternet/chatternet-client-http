@@ -369,39 +369,42 @@ class StoreViewMessage {
   }
 }
 
-interface RecordMessageBody {
+interface RecordMessageDocument {
   jointId: string;
   messageId: string;
-  bodyId: string;
+  documentId: string;
 }
 
 /**
  * Stores a single view message for any object ID.
  */
-class StoreMessageBody {
-  static DEFAULT_NAME = "MessageBody";
+class StoreMessageDocument {
+  static DEFAULT_NAME = "MessageDocument";
 
-  constructor(readonly db: IDBPDatabase, readonly name: string = StoreMessageBody.DEFAULT_NAME) {}
+  constructor(
+    readonly db: IDBPDatabase,
+    readonly name: string = StoreMessageDocument.DEFAULT_NAME
+  ) {}
 
-  static create(db: IDBPDatabase, name: string = StoreMessageBody.DEFAULT_NAME) {
+  static create(db: IDBPDatabase, name: string = StoreMessageDocument.DEFAULT_NAME) {
     const store = db.createObjectStore(name, { keyPath: "jointId" });
-    store.createIndex("bodyId", "bodyId");
+    store.createIndex("documentId", "documentId");
     store.createIndex("messageId", "messageId");
-    return new StoreMessageBody(db, name);
+    return new StoreMessageDocument(db, name);
   }
 
   async clear() {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
-  async hasMessageWithBody(bodyId: string): Promise<boolean> {
+  async hasMessageWithDocument(documentId: string): Promise<boolean> {
     const transaction = this.db.transaction(this.name, "readonly");
-    return (await transaction.store.index("bodyId").count(bodyId)) > 0;
+    return (await transaction.store.index("documentId").count(documentId)) > 0;
   }
 
-  async getBodiesForMessage(messageId: string): Promise<string[]> {
+  async getDocumentsForMessage(messageId: string): Promise<string[]> {
     const transaction = this.db.transaction(this.name, "readonly");
-    return (await transaction.store.index("messageId").getAll(messageId)).map((x) => x.bodyId);
+    return (await transaction.store.index("messageId").getAll(messageId)).map((x) => x.documentId);
   }
 
   async deleteForMessage(messageId: string) {
@@ -410,16 +413,16 @@ class StoreMessageBody {
     for (const key of keys) transaction.store.delete(key);
   }
 
-  async delete(messageId: string, bodyId: string) {
+  async delete(messageId: string, documentId: string) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const jointId = JSON.stringify([messageId, bodyId]);
+    const jointId = JSON.stringify([messageId, documentId]);
     await transaction.store.delete(jointId);
   }
 
-  async put(messageId: string, bodyId: string) {
+  async put(messageId: string, documentId: string) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const jointId = JSON.stringify([messageId, bodyId]);
-    const record: RecordMessageBody = { jointId, messageId, bodyId };
+    const jointId = JSON.stringify([messageId, documentId]);
+    const record: RecordMessageDocument = { jointId, messageId, documentId };
     await transaction.store.put(record);
   }
 }
@@ -502,7 +505,7 @@ export class DbPeer {
     readonly follow: StoreFollow,
     readonly message: StoreMessage,
     readonly document: StoreDocument,
-    readonly messageBody: StoreMessageBody,
+    readonly messageDocument: StoreMessageDocument,
     readonly viewMessage: StoreViewMessage,
     readonly deletedMessage: StoreDocumentId
   ) {}
@@ -512,7 +515,7 @@ export class DbPeer {
     let storeFollow: StoreFollow | undefined = undefined;
     let storeMessage: StoreMessage | undefined = undefined;
     let storeDocument: StoreDocument | undefined = undefined;
-    let storeMessageBody: StoreMessageBody | undefined = undefined;
+    let storeMessageDocument: StoreMessageDocument | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
     let storeDeletedMessage: StoreDocumentId | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
@@ -521,7 +524,7 @@ export class DbPeer {
         storeFollow = StoreFollow.create(db);
         storeMessage = StoreMessage.create(db);
         storeDocument = StoreDocument.create(db);
-        storeMessageBody = StoreMessageBody.create(db);
+        storeMessageDocument = StoreMessageDocument.create(db);
         storeViewMessage = StoreViewMessage.create(db);
         storeDeletedMessage = StoreDocumentId.create(db, "DeletedMessage");
       },
@@ -530,7 +533,9 @@ export class DbPeer {
     storeFollow = storeFollow ? storeFollow : new StoreFollow(db);
     storeMessage = storeMessage ? storeMessage : new StoreMessage(db);
     storeDocument = storeDocument ? storeDocument : new StoreDocument(db);
-    storeMessageBody = storeMessageBody ? storeMessageBody : new StoreMessageBody(db);
+    storeMessageDocument = storeMessageDocument
+      ? storeMessageDocument
+      : new StoreMessageDocument(db);
     storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
     storeDeletedMessage = storeDeletedMessage
       ? storeDeletedMessage
@@ -541,7 +546,7 @@ export class DbPeer {
       storeFollow,
       storeMessage,
       storeDocument,
-      storeMessageBody,
+      storeMessageDocument,
       storeViewMessage,
       storeDeletedMessage
     );
@@ -552,7 +557,7 @@ export class DbPeer {
     await this.follow.clear();
     await this.message.clear();
     await this.document.clear();
-    await this.messageBody.clear();
+    await this.messageDocument.clear();
     await this.viewMessage.clear();
     await this.deletedMessage.clear();
   }

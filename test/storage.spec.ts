@@ -133,22 +133,25 @@ describe("storage", () => {
     it("puts gets has deletes message body", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      await db.messageBody.put("id:m1", "id:b1");
-      await db.messageBody.put("id:m2", "id:b1");
-      await db.messageBody.put("id:m3", "id:b2");
-      await db.messageBody.put("id:m3", "id:b3");
-      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
-      assert.ok(await db.messageBody.hasMessageWithBody("id:b2"));
-      assert.ok(await db.messageBody.hasMessageWithBody("id:b3"));
-      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b4")));
-      assert.deepEqual(await db.messageBody.getBodiesForMessage("id:m3"), ["id:b2", "id:b3"]);
-      await db.messageBody.delete("id:m1", "id:b1");
-      assert.ok(await db.messageBody.hasMessageWithBody("id:b1"));
-      await db.messageBody.delete("id:m2", "id:b1");
-      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b1")));
-      await db.messageBody.deleteForMessage("id:m3");
-      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b2")));
-      assert.ok(!(await db.messageBody.hasMessageWithBody("id:b3")));
+      await db.messageDocument.put("id:m1", "id:b1");
+      await db.messageDocument.put("id:m2", "id:b1");
+      await db.messageDocument.put("id:m3", "id:b2");
+      await db.messageDocument.put("id:m3", "id:b3");
+      assert.ok(await db.messageDocument.hasMessageWithDocument("id:b1"));
+      assert.ok(await db.messageDocument.hasMessageWithDocument("id:b2"));
+      assert.ok(await db.messageDocument.hasMessageWithDocument("id:b3"));
+      assert.ok(!(await db.messageDocument.hasMessageWithDocument("id:b4")));
+      assert.deepEqual(await db.messageDocument.getDocumentsForMessage("id:m3"), [
+        "id:b2",
+        "id:b3",
+      ]);
+      await db.messageDocument.delete("id:m1", "id:b1");
+      assert.ok(await db.messageDocument.hasMessageWithDocument("id:b1"));
+      await db.messageDocument.delete("id:m2", "id:b1");
+      assert.ok(!(await db.messageDocument.hasMessageWithDocument("id:b1")));
+      await db.messageDocument.deleteForMessage("id:m3");
+      assert.ok(!(await db.messageDocument.hasMessageWithDocument("id:b2")));
+      assert.ok(!(await db.messageDocument.hasMessageWithDocument("id:b3")));
     });
 
     it("puts and gets view message", async () => {

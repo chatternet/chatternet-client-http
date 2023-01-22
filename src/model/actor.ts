@@ -1,13 +1,13 @@
 import type { WithProof } from "../signatures.js";
 import { DateTime, Key, isDateTime, sign, verify } from "../signatures.js";
 import { getIsoDate } from "../utils.js";
-import { CONTEXT, Context, Uri, isContext, isUri } from "./utils.js";
+import { CONTEXT_SIG_STREAM, ContextSigStream, Uri, isContextSigStream, isUri } from "./utils.js";
 import { get, has } from "lodash-es";
 
 const MAX_NAME_CHARS = 30;
 
 export interface ActorNoProof {
-  "@context": Context;
+  "@context": ContextSigStream;
   id: Uri;
   type: string;
   published: DateTime;
@@ -30,7 +30,7 @@ export async function newActor(
 ): Promise<Actor> {
   const id = `${did}/actor`;
   const actor: ActorNoProof = {
-    "@context": CONTEXT,
+    "@context": CONTEXT_SIG_STREAM,
     id,
     type,
     published: getIsoDate(),
@@ -47,7 +47,7 @@ export function didFromActorId(actorId: string): string | undefined {
 }
 
 export function isActor(x: unknown): x is Actor {
-  if (!isContext(get(x, "@context"))) return false;
+  if (!isContextSigStream(get(x, "@context"))) return false;
   if (!isUri(get(x, "id"))) return false;
   if (!has(x, "type")) return false;
   if (!isDateTime(get(x, "published"))) return false;

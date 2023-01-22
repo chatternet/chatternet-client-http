@@ -266,7 +266,7 @@ export class ChatterNet {
   }
 
   /**
-   * Store a message and any of its provided bodies to the local store.
+   * Store a message and any of its provided documents to the local store.
    *
    * @param messageDocuments
    */
@@ -275,7 +275,7 @@ export class ChatterNet {
     await this.dbs.peer.document.put(messageDocuments.message);
     for (const document of messageDocuments.documents) {
       await this.dbs.peer.document.put(document);
-      await this.dbs.peer.messageBody.put(messageDocuments.message.id, document.id);
+      await this.dbs.peer.messageDocument.put(messageDocuments.message.id, document.id);
     }
   }
 
@@ -288,11 +288,11 @@ export class ChatterNet {
     await this.dbs.peer.deletedMessage.put(messageId);
     await this.dbs.peer.message.delete(messageId);
     await this.dbs.peer.document.delete(messageId);
-    const bodiesId = await this.dbs.peer.messageBody.getBodiesForMessage(messageId);
-    this.dbs.peer.messageBody.deleteForMessage(messageId);
-    for (const bodyId of bodiesId) {
-      if (await this.dbs.peer.messageBody.hasMessageWithBody(bodyId)) continue;
-      this.dbs.peer.document.delete(bodyId);
+    const documentsId = await this.dbs.peer.messageDocument.getDocumentsForMessage(messageId);
+    this.dbs.peer.messageDocument.deleteForMessage(messageId);
+    for (const documentId of documentsId) {
+      if (await this.dbs.peer.messageDocument.hasMessageWithDocument(documentId)) continue;
+      this.dbs.peer.document.delete(documentId);
     }
   }
 
@@ -307,9 +307,9 @@ export class ChatterNet {
   }
 
   /**
-   * Post a message and any of its provided bodies to the servers.
+   * Post a message and any of its provided documents to the servers.
    *
-   * @param messageDocuments the message and associated bodies to post
+   * @param messageDocuments the message and associated documents to post
    */
   async postMessageDocuments(messageDocuments: MessageDocuments) {
     await this.servers.postMessage(messageDocuments.message, this.getLocalDid());

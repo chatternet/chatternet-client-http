@@ -2,7 +2,15 @@ import { WithProof, buildDocCid, isDateTime } from "../signatures.js";
 import { DateTime, Key, sign, verify } from "../signatures.js";
 import { getIsoDate } from "../utils.js";
 import { didFromActorId } from "./actor.js";
-import { CONTEXT, Context, Uri, WithId, isContext, isIterable, isUri } from "./utils.js";
+import {
+  CONTEXT_SIG_STREAM,
+  ContextSigStream,
+  Uri,
+  WithId,
+  isContextSigStream,
+  isIterable,
+  isUri,
+} from "./utils.js";
 import { get, has, isEqual, omit } from "lodash-es";
 import { CID } from "multiformats";
 
@@ -20,7 +28,7 @@ function isUris(uris: unknown): uris is Uri[] {
 }
 
 interface MessageNoIdProof {
-  "@context": Context;
+  "@context": ContextSigStream;
   type: string;
   actor: Uri;
   object: Uri[];
@@ -49,7 +57,7 @@ export async function newMessage(
 ): Promise<Message> {
   let actor = `${actorDid}/actor`;
   const message: MessageNoIdProof = {
-    "@context": CONTEXT,
+    "@context": CONTEXT_SIG_STREAM,
     type,
     actor,
     object: objectsId,
@@ -83,7 +91,7 @@ export async function verifyMessage(message: Message): Promise<boolean> {
 }
 
 export function isMessage(x: unknown): x is Message {
-  if (!isContext(get(x, "@context"))) return false;
+  if (!isContextSigStream(get(x, "@context"))) return false;
   if (!isUri(get(x, "id"))) return false;
   if (!has(x, "type")) return false;
   if (!isUri(get(x, "actor"))) return false;

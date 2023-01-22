@@ -1,12 +1,12 @@
 import { Model } from "../../src/index.js";
-import { CONTEXT } from "../../src/model/utils.js";
+import { CONTEXT_STREAM } from "../../src/model/utils.js";
 import * as assert from "assert";
 import { omit } from "lodash-es";
 
 describe("model body", () => {
-  it("guards body", async () => {
+  it("guards note", async () => {
     const objectDoc = {
-      "@context": CONTEXT,
+      "@context": CONTEXT_STREAM,
       id: "a:b",
       type: "Note",
       content: "abcd",
@@ -37,5 +37,34 @@ describe("model body", () => {
     const objectDoc = await Model.newNoteMd1k("abc", "did:example:a");
     objectDoc.content = "abcd";
     assert.ok(!(await Model.verifyNoteMd1k(objectDoc)));
+  });
+
+  it("guards tag", async () => {
+    const objectDoc = {
+      "@context": CONTEXT_STREAM,
+      id: "a:b",
+      type: "Object",
+      name: "abcd",
+    };
+    assert.ok(Model.isTag30(objectDoc));
+    assert.ok(!Model.isTag30(omit(objectDoc, "@context")));
+    assert.ok(!Model.isTag30(omit(objectDoc, "id")));
+    assert.ok(!Model.isTag30(omit(objectDoc, "type")));
+    assert.ok(!Model.isTag30(omit(objectDoc, "name")));
+  });
+
+  it("builds and verifies a tag", async () => {
+    const objectDoc = await Model.newTag30("abc");
+    assert.ok(await Model.verifyTag30(objectDoc));
+  });
+
+  it("doesnt build a tag with name too long", async () => {
+    assert.rejects(async () => await Model.newTag30("a".repeat(30 + 1)));
+  });
+
+  it("doesnt verify a tag with invalid content", async () => {
+    const objectDoc = await Model.newTag30("abc");
+    objectDoc.name = "abcd";
+    assert.ok(!(await Model.verifyTag30(objectDoc)));
   });
 });
