@@ -90,8 +90,9 @@ describe("chatter net", () => {
   it("builds a message", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
+    const followers = ChatterNet.followersFromId(ChatterNet.actorFromDid(did));
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const message = await chatterNet.newMessage(["id:a", "id:b"], "View");
+    const message = await chatterNet.newMessage(["id:a", "id:b"], "View", [followers]);
     assert.deepEqual(message.object, ["id:a", "id:b"]);
     assert.equal(message.type, "View");
   });
@@ -100,17 +101,19 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const { documents } = await chatterNet.newNote("abcd");
-    assert.equal(documents.length, 1);
+    const { documents } = await chatterNet.newNote("abcd", await chatterNet.toSelf());
+    assert.equal(documents.length, 2);
     assert.equal(get(documents, "0.type"), "Note");
     assert.equal(get(documents, "0.content"), "abcd");
+    assert.equal(get(documents, "1.type"), "Person");
+    assert.equal(get(documents, "1.name"), "some name");
   });
 
   it("builds a delete message", async () => {
     await ChatterNet.clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
-    const messageObjectDoc = await chatterNet1.newNote("abcd");
+    const messageObjectDoc = await chatterNet1.newNote("abcd", await chatterNet1.toSelf());
     // cannot delete a message which is not yet known
     assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
     // if local has message, it can be deleted
@@ -127,7 +130,7 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const messageObjectDoc = await chatterNet2.newNote("abcd");
+    const messageObjectDoc = await chatterNet2.newNote("abcd", await chatterNet2.toSelf());
     await chatterNet1.storeMessageDocuments(messageObjectDoc);
     // cannot delete a message with different actor
     assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
@@ -176,7 +179,8 @@ describe("chatter net", () => {
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const origin = await chatterNet1.newMessage(["id:a"], "Create");
+    const followers1 = ChatterNet.followersFromId(ChatterNet.actorFromDid(did1));
+    const origin = await chatterNet1.newMessage(["id:a"], "Create", [followers1]);
     const message = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(message);
     assert.equal(message.type, "View");
@@ -190,7 +194,8 @@ describe("chatter net", () => {
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const origin = await chatterNet1.newMessage(["id:a"], "View");
+    const followers1 = ChatterNet.followersFromId(ChatterNet.actorFromDid(did1));
+    const origin = await chatterNet1.newMessage(["id:a"], "View", [followers1]);
     const message = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(!message);
   });
@@ -199,7 +204,8 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
-    const origin = await chatterNet1.newMessage(["id:a"], "Create");
+    const followers1 = ChatterNet.followersFromId(ChatterNet.actorFromDid(did1));
+    const origin = await chatterNet1.newMessage(["id:a"], "Create", [followers1]);
     const message = await chatterNet1.getOrNewViewMessage(origin);
     assert.ok(!message);
   });
@@ -210,7 +216,8 @@ describe("chatter net", () => {
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const origin = await chatterNet1.newMessage(["id:a"], "Create");
+    const followers1 = ChatterNet.followersFromId(ChatterNet.actorFromDid(did1));
+    const origin = await chatterNet1.newMessage(["id:a"], "Create", [followers1]);
     const message1 = await chatterNet2.getOrNewViewMessage(origin);
     const message2 = await chatterNet2.getOrNewViewMessage(origin);
     assert.ok(message1);
@@ -268,7 +275,7 @@ describe("chatter net", () => {
     const chatterNet3 = await ChatterNet.new(did3, "abc", defaultServers);
 
     // did1 posts
-    const note = await chatterNet1.newNote("Hi!");
+    const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     await chatterNet1.postMessageDocuments(note);
     // gets object
     assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
@@ -306,7 +313,7 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
     // did1 posts
-    const note = await chatterNet1.newNote("Hi!");
+    const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     await chatterNet1.postMessageDocuments(note);
     // iterates message
     const messages = await listMessages(await chatterNet2.buildMessageIterFrom(`${did1}/actor`));
@@ -319,7 +326,7 @@ describe("chatter net", () => {
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     // did1 posts
-    const note = await chatterNet.newNote("Hi!");
+    const note = await chatterNet.newNote("Hi!", await chatterNet.toSelf());
     await chatterNet.postMessageDocuments(note);
     const message = await chatterNet.getCreateMessageForDocument(
       note.documents[0].id,
@@ -335,7 +342,7 @@ describe("chatter net", () => {
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const note = await chatterNet1.newNote("hello");
+    const note = await chatterNet1.newNote("hello", await chatterNet1.toSelf());
     // sent from wrong account
     assert.rejects(async () => await chatterNet2.postMessageDocuments(note));
   });
@@ -345,7 +352,7 @@ describe("chatter net", () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-    const note = await chatterNet.newNote("hello");
+    const note = await chatterNet.newNote("hello", await chatterNet.toSelf());
     // invalid document id
     note.documents[0].id = "urn:cid:a";
     assert.rejects(async () => await chatterNet.postMessageDocuments(note));
@@ -356,7 +363,7 @@ describe("chatter net", () => {
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
-    const note = await chatterNet1.newNote("Hi!");
+    const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     await chatterNet1.storeMessageDocuments(note);
     // gets object
     assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
@@ -371,7 +378,7 @@ describe("chatter net", () => {
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
-    const note = await chatterNet1.newNote("Hi!");
+    const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     await chatterNet1.storeMessageDocuments(note);
     // can retrieve message
     assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
@@ -401,7 +408,7 @@ describe("chatter net", () => {
 
     // did1 posts
     const { message: blankMessage } = await chatterNet1.newNote("Hi!", []);
-    const { message: noteMessage } = await chatterNet1.newNote("Hi!");
+    const { message: noteMessage } = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     assert.deepEqual(await chatterNet1.buildMessageAffinity(blankMessage), {
       fromContact: true,
       inAudience: false,
