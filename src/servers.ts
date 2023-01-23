@@ -61,7 +61,7 @@ async function getPaginated(
   return await fetch(request);
 }
 
-async function getBody(id: string, serverUrl: string): Promise<Response> {
+async function getDocument(id: string, serverUrl: string): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
   const url = new URL(`${serverUrl}/ap/${id}`);
   const request = new Request(url, {
@@ -151,17 +151,16 @@ export class Servers {
     for (const server of servers) {
       let response: Response;
       try {
-        response = await getBody(id, server.url);
+        response = await getDocument(id, server.url);
       } catch {
         continue;
       }
       if (!response.ok) continue;
-      const body: unknown = await response.json();
-      // TODO: create property body model and test that
+      const document: unknown = await response.json();
       // TODO: validate ID
-      if (!isWithId(body)) continue;
-      server.knownIds.add(body.id);
-      return body;
+      if (!isWithId(document)) continue;
+      server.knownIds.add(document.id);
+      return document;
     }
   }
 

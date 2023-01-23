@@ -23,17 +23,24 @@ export function isUri(x: unknown): x is Uri {
   return true;
 }
 
-export type ContextAstream = "https://www.w3.org/ns/activitystreams";
+export type ContextActivityStream = "https://www.w3.org/ns/activitystreams";
 export type ContextSignature = "https://w3id.org/security/suites/ed25519-2020/v1";
-export type Context = [ContextSignature, ContextAstream];
-export const CONTEXT: Context = [
+export type ContextStream = [ContextActivityStream];
+export const CONTEXT_STREAM: ContextStream = ["https://www.w3.org/ns/activitystreams"];
+export function isContextStream(x: unknown): x is ContextSigStream {
+  if (get(x, "length") != 1) return false;
+  if (get(x, 0) !== CONTEXT_STREAM[0]) return false;
+  return true;
+}
+export type ContextSigStream = [ContextSignature, ContextActivityStream];
+export const CONTEXT_SIG_STREAM: ContextSigStream = [
   "https://w3id.org/security/suites/ed25519-2020/v1",
   "https://www.w3.org/ns/activitystreams",
 ];
-export function isContext(x: unknown): x is Context {
+export function isContextSigStream(x: unknown): x is ContextSigStream {
   if (get(x, "length") != 2) return false;
-  if (get(x, 0) !== CONTEXT[0]) return false;
-  if (get(x, 1) !== CONTEXT[1]) return false;
+  if (get(x, 0) !== CONTEXT_SIG_STREAM[0]) return false;
+  if (get(x, 1) !== CONTEXT_SIG_STREAM[1]) return false;
   return true;
 }
 
