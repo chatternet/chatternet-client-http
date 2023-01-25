@@ -466,6 +466,16 @@ describe("chatter net", () => {
     );
   });
 
+  it("builds and stores tag", async () => {
+    await ChatterNet.clearDbs();
+    const did = await ChatterNet.newAccount(await DidKey.newKey(), "name", "abc");
+    const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
+    const tag = await chatterNet.buildTag("abc");
+    assert.equal(tag.name, "abc");
+    const idToName = await ChatterNet.getIdToName();
+    assert.equal(idToName.get(tag.id), "abc");
+  });
+
   it("gets local did", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");

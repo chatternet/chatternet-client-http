@@ -112,6 +112,16 @@ export class ChatterNet {
   }
 
   /**
+   * List all known ID name pairs.
+   *
+   * @returns mapping of ID to name
+   */
+  static async getIdToName(): Promise<Map<string, string>> {
+    const db = await Storage.DbDevice.new();
+    return new Map((await db.idName.getAll()).map(({ id, name }) => [id, name]));
+  }
+
+  /**
    * Clear all all local stores.
    */
   static async clearDbs() {
@@ -619,6 +629,18 @@ export class ChatterNet {
       return typeof x === "string";
     };
     return PageIter.new<string>(uri, this.servers, 32, isString);
+  }
+
+  /**
+   * Build a new tag and stores the mapping of its ID to its name.
+   *
+   * @param name the tag name
+   * @returns the `Model.Tag30` object
+   */
+  async buildTag(name: string): Promise<Model.Tag30> {
+    const tag = await Model.newTag30(name);
+    await this.dbs.device.idName.put(tag.id, tag.name);
+    return tag;
   }
 
   /**
