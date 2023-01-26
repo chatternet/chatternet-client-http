@@ -29,8 +29,8 @@ describe("servers", () => {
     const message = await Model.newMessage(did, ["urn:cid:a"], "Create", null, key);
     await servers.postMessage(message, did);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/ap/${did}/actor/outbox`,
-      `http://b.example/ap/${did}/actor/outbox`,
+      `http://a.example/${did}/actor/outbox`,
+      `http://b.example/${did}/actor/outbox`,
     ]);
   });
 
@@ -51,8 +51,8 @@ describe("servers", () => {
     const objectDoc = await Model.newNoteMd1k("Note", "did:example:a");
     await servers.postDocument(objectDoc);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/ap/${objectDoc.id}`,
-      `http://b.example/ap/${objectDoc.id}`,
+      `http://a.example/${objectDoc.id}`,
+      `http://b.example/${objectDoc.id}`,
     ]);
   });
 
@@ -65,10 +65,7 @@ describe("servers", () => {
     const objectDoc = await Model.newNoteMd1k("Note", "did:example:a");
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
-      )
+      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
         return new Response(JSON.stringify(objectDoc));
       return new Response(null, { status: 500 });
     };
@@ -93,7 +90,7 @@ describe("servers", () => {
       const request = input as Request;
       if (
         request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${objectId}/createdBy/${actorId}`
+        request.url.toString() === `http://a.example/${objectId}/createdBy/${actorId}`
       )
         return new Response(JSON.stringify(message));
       return new Response(null, { status: 500 });
@@ -115,15 +112,9 @@ describe("servers", () => {
     global.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input as Request;
       requestedUrls.push(request.url.toString());
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://b.example/ap/${objectDoc.id}`
-      )
+      if (request.method === "GET" && request.url.toString() === `http://b.example/${objectDoc.id}`)
         return new Response(JSON.stringify(objectDoc));
-      if (
-        request.method === "GET" &&
-        request.url.toString() === `http://a.example/ap/${objectDoc.id}`
-      )
+      if (request.method === "GET" && request.url.toString() === `http://a.example/${objectDoc.id}`)
         return new Response(null, { status: 404 });
       return new Response(null, { status: 500 });
     };
@@ -131,13 +122,13 @@ describe("servers", () => {
     // tries both URLs before finding the object
     await servers.getDocument(objectDoc.id);
     assert.deepEqual(requestedUrls, [
-      `http://a.example/ap/${objectDoc.id}`,
-      `http://b.example/ap/${objectDoc.id}`,
+      `http://a.example/${objectDoc.id}`,
+      `http://b.example/${objectDoc.id}`,
     ]);
     // directly asks b since it knows it has the object
     requestedUrls = [];
     await servers.getDocument(objectDoc.id);
-    assert.deepEqual(requestedUrls, [`http://b.example/ap/${objectDoc.id}`]);
+    assert.deepEqual(requestedUrls, [`http://b.example/${objectDoc.id}`]);
   });
 
   it("doesnt get invalid actor", async () => {
@@ -159,7 +150,7 @@ describe("servers", () => {
       if (request.method !== "GET") return notFound;
       const url = new URL(request.url);
       if (url.origin !== "http://a.example") return notFound;
-      if (url.pathname !== "/ap/resource-uri") return notFound;
+      if (url.pathname !== "/resource-uri") return notFound;
 
       let items = [];
       const startIdx = url.searchParams.get("startIdx");

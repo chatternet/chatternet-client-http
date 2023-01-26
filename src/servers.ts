@@ -25,7 +25,7 @@ async function postMessage(
   serverUrl: string
 ): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${did}/actor/outbox`);
+  const url = new URL(`${serverUrl}/${did}/actor/outbox`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(message),
@@ -36,7 +36,7 @@ async function postMessage(
 
 async function postDocument(document: Model.WithId, serverUrl: string): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${document.id}`);
+  const url = new URL(`${serverUrl}/${document.id}`);
   const request = new Request(url, {
     method: "POST",
     body: JSON.stringify(document),
@@ -52,7 +52,7 @@ async function getPaginated(
   pageSize?: number
 ): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${uri}`);
+  const url = new URL(`${serverUrl}/${uri}`);
   if (startIdx) url.searchParams.set("startIdx", startIdx.toString());
   if (pageSize) url.searchParams.set("pageSize", pageSize.toString());
   const request = new Request(url, {
@@ -63,7 +63,7 @@ async function getPaginated(
 
 async function getDocument(id: string, serverUrl: string): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${id}`);
+  const url = new URL(`${serverUrl}/${id}`);
   const request = new Request(url, {
     method: "GET",
   });
@@ -76,7 +76,7 @@ async function getCreateMessageForDocument(
   serverUrl: string
 ): Promise<Response> {
   serverUrl = serverUrl.replace(/\/$/, "");
-  const url = new URL(`${serverUrl}/ap/${id}/createdBy/${actorId}`);
+  const url = new URL(`${serverUrl}/${id}/createdBy/${actorId}`);
   const request = new Request(url, {
     method: "GET",
   });
