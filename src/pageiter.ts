@@ -49,7 +49,12 @@ export class PageIter<T> {
       try {
         out = await this.servers.getPaginated(this.uri, url, startIdx, this.pageSize);
       } catch {}
-      if (out == null || out.nextStartIdx == null || out.items.length <= 0)
+      if (
+        out == null ||
+        out.items.length <= 0 ||
+        out.nextStartIdx == null ||
+        out.nextStartIdx == startIdx
+      )
         this.serverCursors[serverIdx].exhausted = true;
       if (out == null) continue;
       this.serverCursors[serverIdx].startIdx = out.nextStartIdx;
