@@ -141,14 +141,14 @@ describe("chatter net", () => {
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      const { message } = await chatterNet.newFollow("id:a");
+      const { message } = await chatterNet.newFollow({ id: "id:a", name: "name a", timestamp: 10 });
       assert.equal(message.type, "Add");
       assert.deepEqual(message.object, ["id:a"]);
       assert.deepEqual(message.target, [`${did}/actor/following`]);
     }
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
-      await chatterNet.newFollow("id:b");
+      await chatterNet.newFollow({ id: "id:b", name: "name b", timestamp: 10 });
     }
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
@@ -286,7 +286,11 @@ describe("chatter net", () => {
 
     // did2 follows did1
     await chatterNet2.postMessageDocuments(
-      await chatterNet2.newFollow(ChatterNet.actorFromDid(did1))
+      await chatterNet2.newFollow({
+        id: ChatterNet.actorFromDid(did1),
+        name: "name",
+        timestamp: 10,
+      })
     );
     // iterates message
     const messages2 = await listMessages(await chatterNet2.buildMessageIter());
@@ -298,7 +302,11 @@ describe("chatter net", () => {
 
     // did3 follows did2
     await chatterNet3.postMessageDocuments(
-      await chatterNet3.newFollow(ChatterNet.actorFromDid(did2))
+      await chatterNet3.newFollow({
+        id: ChatterNet.actorFromDid(did2),
+        name: "name",
+        timestamp: 10,
+      })
     );
     // did3 see view
     const messages3 = await listMessages(await chatterNet2.buildMessageIter());
@@ -419,14 +427,14 @@ describe("chatter net", () => {
     });
 
     // did2 follows did1
-    await chatterNet2.newFollow(ChatterNet.actorFromDid(did1));
+    await chatterNet2.newFollow({ id: ChatterNet.actorFromDid(did1), name: "name", timestamp: 10 });
     assert.deepEqual(await chatterNet2.buildMessageAffinity(noteMessage), {
       fromContact: true,
       inAudience: true,
     });
 
     // did3 follows did2
-    await chatterNet3.newFollow(ChatterNet.actorFromDid(did2));
+    await chatterNet3.newFollow({ id: ChatterNet.actorFromDid(did2), name: "name", timestamp: 10 });
     assert.deepEqual(await chatterNet3.buildMessageAffinity(noteMessage), {
       fromContact: false,
       inAudience: false,
@@ -443,14 +451,15 @@ describe("chatter net", () => {
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
     const chatterNet3 = await ChatterNet.new(did3, "abc", defaultServers);
+    const actorId1 = ChatterNet.actorFromDid(did1);
 
     // did2 follows did1
     await chatterNet2.postMessageDocuments(
-      await chatterNet2.newFollow(ChatterNet.actorFromDid(did1))
+      await chatterNet2.newFollow({ id: actorId1, name: "name", timestamp: 10 })
     );
     // did3 follows did1
     await chatterNet3.postMessageDocuments(
-      await chatterNet3.newFollow(ChatterNet.actorFromDid(did1))
+      await chatterNet3.newFollow({ id: actorId1, name: "name", timestamp: 10 })
     );
 
     // iterates followers
@@ -466,14 +475,12 @@ describe("chatter net", () => {
     );
   });
 
-  it("builds and stores tag", async () => {
+  it("builds a tag", async () => {
     await ChatterNet.clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const tag = await chatterNet.buildTag("abc");
     assert.equal(tag.name, "abc");
-    const idToName = await ChatterNet.getIdToName();
-    assert.equal(idToName.get(tag.id), "abc");
   });
 
   it("gets local did", async () => {

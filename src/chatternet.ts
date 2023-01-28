@@ -7,6 +7,7 @@ import { Servers } from "./servers.js";
 import type { Key } from "./signatures.js";
 import * as Storage from "./storage.js";
 import type { IdName } from "./storage.js";
+import { getTimestamp } from "./utils.js";
 
 interface Dbs {
   device: Storage.DbDevice;
@@ -90,7 +91,7 @@ export class ChatterNet {
     const salt = await db.idSalt.getPut(did);
     const cryptoKey = await Storage.cryptoKeyFromPassword(password, salt);
     await db.keyPair.put(key, cryptoKey);
-    await db.idName.put(did, name);
+    await db.idName.putIfNewer({ id: did, name, timestamp: getTimestamp() });
     return did;
   }
 
@@ -184,8 +185,21 @@ export class ChatterNet {
    */
   async changeName(name: string): Promise<MessageDocuments> {
     this.name = name;
-    await this.dbs.device.idName.put(this.getLocalDid(), name);
+    await this.dbs.device.idName.put({ id: this.getLocalDid(), name, timestamp: getTimestamp() });
     return await this.buildActor();
+  }
+
+  /**
+   * Update ID name if it is already in the local store and newer than the
+   * existing entry.
+   *
+   * ID names are added when an ID is followed. This method can then be used
+   * to keep the names up-to-date.
+   *
+   * @param idName the ID name to update
+   */
+  async updateIdName(idName: IdName) {
+    await this.dbs.device.idName.updateIfNewer(idName);
   }
 
   /**
@@ -427,15 +441,16 @@ export class ChatterNet {
    * This message has no audience and will not propagate. It will affect only
    * the state of the servers it is directly sent to.
    *
-   * @param id ID followed by the actor
+   * @param idName the information about the ID to follow
    * @returns the message and object to send
    */
-  async newFollow(id: string): Promise<MessageDocuments> {
-    await this.dbs.peer.follow.put(id);
+  async newFollow(idName: IdName): Promise<MessageDocuments> {
+    await this.dbs.peer.follow.put(idName.id);
+    if (idName.name) await this.dbs.peer.idName.putIfNewer(idName);
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const target = [`${actorId}/following`];
-    const message = await Model.newMessage(did, [id], "Add", null, this.key, { target });
+    const message = await Model.newMessage(did, [idName.id], "Add", null, this.key, { target });
     return { message, documents: [] };
   }
 
@@ -639,7 +654,6 @@ export class ChatterNet {
    */
   async buildTag(name: string): Promise<Model.Tag30> {
     const tag = await Model.newTag30(name);
-    await this.dbs.device.idName.put(tag.id, tag.name);
     return tag;
   }
 

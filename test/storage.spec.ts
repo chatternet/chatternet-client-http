@@ -42,16 +42,10 @@ describe("storage", () => {
     it("puts and gets name", async () => {
       const db = await Storage.DbDevice.new();
       await db.clear();
-      await db.idName.put("did:example:a", "name 1");
-      assert.deepEqual(await db.idName.get("did:example:a"), {
-        id: "did:example:a",
-        name: "name 1",
-      });
-      await db.idName.put("did:example:b", "name 2");
-      assert.deepEqual(await db.idName.get("did:example:b"), {
-        id: "did:example:b",
-        name: "name 2",
-      });
+      await db.idName.put({ id: "did:example:a", name: "name 1", timestamp: 0 });
+      assert.equal((await db.idName.get("did:example:a"))?.name, "name 1");
+      await db.idName.put({ id: "did:example:b", name: "name 2", timestamp: 0 });
+      assert.equal((await db.idName.get("did:example:b"))?.name, "name 2");
     });
   });
 
@@ -179,6 +173,29 @@ describe("storage", () => {
       assert.ok(await db.deletedMessage.hasId("id:a"));
       assert.ok(await db.deletedMessage.hasId("id:b"));
       assert.ok(!(await db.deletedMessage.hasId("id:c")));
+    });
+
+    it("puts, updates, gets name", async () => {
+      const db = await Storage.DbPeer.new();
+      await db.clear();
+
+      // puts and overwrites regardless of timestamp
+      await db.idName.put({ id: "did:example:a", name: "name 1", timestamp: 10 });
+      assert.equal((await db.idName.get("did:example:a"))?.name, "name 1");
+      await db.idName.put({ id: "did:example:a", name: "name 1a", timestamp: 9 });
+      assert.equal((await db.idName.get("did:example:a"))?.name, "name 1a");
+
+      // puts and updates if newer
+      await db.idName.putIfNewer({ id: "did:example:b", name: "name 2", timestamp: 10 });
+      assert.equal((await db.idName.get("did:example:b"))?.name, "name 2");
+      await db.idName.putIfNewer({ id: "did:example:b", name: "name 2a", timestamp: 11 });
+      assert.equal((await db.idName.get("did:example:b"))?.name, "name 2a");
+      await db.idName.putIfNewer({ id: "did:example:b", name: "name 2b", timestamp: 10 });
+      assert.equal((await db.idName.get("did:example:b"))?.name, "name 2a");
+
+      // doesn't update because not yet known
+      await db.idName.updateIfNewer({ id: "did:example:c", name: "name 3", timestamp: 10 });
+      assert.ok(!(await db.idName.get("did:example:c")));
     });
   });
 });

@@ -4,11 +4,12 @@ import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export interface IdName {
   id: string;
   name: string;
+  timestamp: number;
 }
 
 export interface ServerInfo {
@@ -146,16 +147,30 @@ class StoreIdName {
     await this.db.transaction(this.name, "readwrite").store.clear();
   }
 
-  async put(id: string, name: string) {
+  async put(idName: IdName) {
     const transaction = this.db.transaction(this.name, "readwrite");
-    const record: RecordIdName = { id, name };
-    await transaction.store.put(record);
+    await transaction.store.put(idName);
+  }
+
+  async putIfNewer(idName: IdName) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const current: RecordIdName | undefined = await transaction.store.get(idName.id);
+    if (current && current.timestamp >= idName.timestamp) return;
+    await transaction.store.put(idName);
+  }
+
+  async updateIfNewer(idName: IdName) {
+    const transaction = this.db.transaction(this.name, "readwrite");
+    const current: RecordIdName | undefined = await transaction.store.get(idName.id);
+    if (!current) return;
+    if (current.timestamp >= idName.timestamp) return;
+    await transaction.store.put(idName);
   }
 
   async get(id: string): Promise<IdName | undefined> {
     const transaction = this.db.transaction(this.name, "readonly");
-    const idName: RecordIdName | undefined = await transaction.store.get(id);
-    return idName;
+    const record: RecordIdName | undefined = await transaction.store.get(id);
+    return record;
   }
 
   async getAll(): Promise<IdName[]> {
@@ -507,7 +522,8 @@ export class DbPeer {
     readonly document: StoreDocument,
     readonly messageDocument: StoreMessageDocument,
     readonly viewMessage: StoreViewMessage,
-    readonly deletedMessage: StoreDocumentId
+    readonly deletedMessage: StoreDocumentId,
+    readonly idName: StoreIdName
   ) {}
 
   static async new(name: string = DbPeer.DEFAULT_NAME): Promise<DbPeer> {
@@ -518,6 +534,7 @@ export class DbPeer {
     let storeMessageDocument: StoreMessageDocument | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
     let storeDeletedMessage: StoreDocumentId | undefined = undefined;
+    let storeIdName: StoreIdName | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
         storeServer = StoreServer.create(db);
@@ -527,6 +544,7 @@ export class DbPeer {
         storeMessageDocument = StoreMessageDocument.create(db);
         storeViewMessage = StoreViewMessage.create(db);
         storeDeletedMessage = StoreDocumentId.create(db, "DeletedMessage");
+        storeIdName = StoreIdName.create(db);
       },
     });
     storeServer = storeServer ? storeServer : new StoreServer(db);
@@ -540,6 +558,7 @@ export class DbPeer {
     storeDeletedMessage = storeDeletedMessage
       ? storeDeletedMessage
       : new StoreDocumentId(db, "DeletedMessage");
+    storeIdName = storeIdName ? storeIdName : new StoreIdName(db);
     return new DbPeer(
       db,
       storeServer,
@@ -548,7 +567,8 @@ export class DbPeer {
       storeDocument,
       storeMessageDocument,
       storeViewMessage,
-      storeDeletedMessage
+      storeDeletedMessage,
+      storeIdName
     );
   }
 
@@ -560,5 +580,6 @@ export class DbPeer {
     await this.messageDocument.clear();
     await this.viewMessage.clear();
     await this.deletedMessage.clear();
+    await this.idName.clear();
   }
 }
