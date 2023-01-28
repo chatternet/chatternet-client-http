@@ -119,7 +119,9 @@ export class ChatterNet {
    */
   static async getIdToName(): Promise<Map<string, string>> {
     const db = await Storage.DbDevice.new();
-    return new Map((await db.idName.getAll()).map(({ id, name }) => [id, name]));
+    return new Map(
+      (await db.idName.getAll()).filter(({ name }) => !!name).map(({ id, name }) => [id, name!])
+    );
   }
 
   /**
@@ -156,6 +158,7 @@ export class ChatterNet {
     const idNameSuffix = await device.idName.get(did);
     if (!idNameSuffix) throw Error("there is no name for the given DID");
     const { name } = idNameSuffix;
+    if (!name) throw Error("there is no name for the given DID");
 
     // find the servers this actor should listen to
     const peer = await Storage.DbPeer.new(`Peer_${did}`);

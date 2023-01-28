@@ -4,11 +4,11 @@ import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export interface IdName {
   id: string;
-  name: string;
+  name?: string;
   timestamp: number;
 }
 
