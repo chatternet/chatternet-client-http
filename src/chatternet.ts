@@ -167,8 +167,7 @@ export class ChatterNet {
     const chatterNet = new ChatterNet(name, key, { device, peer }, servers);
 
     // tell the server about the user name
-    const actorMessageDocuments = await chatterNet.buildActor();
-    chatterNet.storeMessageDocuments(actorMessageDocuments);
+    const actorMessageDocuments = await chatterNet.buildActor(true);
     chatterNet.postMessageDocuments(actorMessageDocuments).catch(() => {});
     // tell the server about the actor follows
     (async () => {
@@ -257,9 +256,9 @@ export class ChatterNet {
   /**
    * Build the message describing the local actor.
    */
-  async buildActor(): Promise<MessageDocuments> {
+  async buildActor(unaddressed: boolean = false): Promise<MessageDocuments> {
     const actorId = ChatterNet.actorFromDid(this.getLocalDid());
-    const to = [ChatterNet.followersFromId(actorId)];
+    const to = unaddressed ? [] : [ChatterNet.followersFromId(actorId)];
     const actor = await Model.newActor(this.getLocalDid(), "Person", this.key, {
       name: this.getLocalName(),
     });

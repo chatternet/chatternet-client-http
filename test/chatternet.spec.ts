@@ -377,7 +377,7 @@ describe("chatter net", () => {
     // can retrieve message
     assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
     assert.equal((await chatterNet1.getDocument(note.documents[0].id))?.id, note.documents[0].id);
-    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 2);
+    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 1);
     // message is not deleted
     assert.ok(!(await chatterNet1.isDeleted(note.message.id)));
     // removes message
@@ -388,7 +388,7 @@ describe("chatter net", () => {
     assert.ok(!(await chatterNet1.getDocument(note.message.id)));
     assert.ok(!(await chatterNet1.getDocument(note.documents[0].id)));
     // no longer iterates message
-    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 1);
+    assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 0);
   });
 
   it("builds message affinity", async () => {
