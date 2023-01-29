@@ -128,8 +128,10 @@ export class ChatterNet {
    * Clear all all local stores.
    */
   static async clearDbs() {
-    await (await Storage.DbDevice.new()).clear();
-    await (await Storage.DbPeer.new()).clear();
+    const dbDevice = await Storage.DbDevice.new();
+    const dids = await dbDevice.keyPair.getDids();
+    for (const did of dids) window.indexedDB.deleteDatabase(`Peer_${did}`);
+    window.indexedDB.deleteDatabase(dbDevice.db.name);
   }
 
   /**
