@@ -168,11 +168,11 @@ describe("storage", () => {
     it("puts has deleted ID", async () => {
       const db = await Storage.DbPeer.new();
       await db.clear();
-      db.deletedMessage.put("id:a");
-      db.deletedMessage.put("id:b");
-      assert.ok(await db.deletedMessage.hasId("id:a"));
-      assert.ok(await db.deletedMessage.hasId("id:b"));
-      assert.ok(!(await db.deletedMessage.hasId("id:c")));
+      db.deleted.put("id:a");
+      db.deleted.put("id:b");
+      assert.ok(await db.deleted.hasId("id:a"));
+      assert.ok(await db.deleted.hasId("id:b"));
+      assert.ok(!(await db.deleted.hasId("id:c")));
     });
 
     it("puts, updates, gets name", async () => {

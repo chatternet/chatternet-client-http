@@ -308,18 +308,22 @@ export class ChatterNet {
   }
 
   /**
-   * Remove a message from the local store if present.
+   * Remove a message or document from the local store if present.
    *
-   * @param messageId the message ID to remove
+   * @param id the document ID to remove
    */
-  async deleteMessageLocal(messageId: string): Promise<void> {
-    await this.dbs.peer.deletedMessage.put(messageId);
-    await this.dbs.peer.message.delete(messageId);
-    await this.dbs.peer.document.delete(messageId);
-    const documentsId = await this.dbs.peer.messageDocument.getDocumentsForMessage(messageId);
-    this.dbs.peer.messageDocument.deleteForMessage(messageId);
+  async deleteLocalId(id: string, forceDeleteObjects: boolean = false): Promise<void> {
+    await this.dbs.peer.deleted.put(id);
+    await this.dbs.peer.message.delete(id);
+    await this.dbs.peer.document.delete(id);
+    const documentsId = await this.dbs.peer.messageDocument.getDocumentsForMessage(id);
+    this.dbs.peer.messageDocument.deleteForMessage(id);
     for (const documentId of documentsId) {
-      if (await this.dbs.peer.messageDocument.hasMessageWithDocument(documentId)) continue;
+      if (
+        !forceDeleteObjects &&
+        (await this.dbs.peer.messageDocument.hasMessageWithDocument(documentId))
+      )
+        continue;
       this.dbs.peer.document.delete(documentId);
     }
   }
@@ -330,8 +334,8 @@ export class ChatterNet {
    * @param messageId
    * @returns
    */
-  async messageIsDeleted(messageId: string): Promise<boolean> {
-    return await this.dbs.peer.deletedMessage.hasId(messageId);
+  async isDeleted(id: string): Promise<boolean> {
+    return await this.dbs.peer.deleted.hasId(id);
   }
 
   /**
@@ -386,22 +390,22 @@ export class ChatterNet {
    *
    * This is a local operation.
    *
-   * Sends to followers of the local actor and followers of the message
-   * objects. Only those groups are allowed to store the message.
+   * Sends to followers of the local actor and followers of the object.
+   *
+   * Note that if the object is neither a message by the local actor, nor a
+   * document attributed to the local actor, the resulting message will be
+   * invalid and rejected by compliant servers.
    *
    * @param ids list of message objects IDs
    * @returns the signed message
    */
-  async newDelete(messageId: string): Promise<Message | undefined> {
-    const message = await this.dbs.peer.document.get(messageId);
-    const actorId = ChatterNet.actorFromDid(this.getLocalDid());
-    if (!message) return;
-    if (!Model.isMessage(message)) return;
-    if (message.actor != actorId) return;
+  async newDelete(id: string): Promise<Message> {
+    const did = this.getLocalDid();
+    const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
-    const objectsFollowers = message.object.map((x) => ChatterNet.followersFromId(x));
-    const to = [actorFollowers, ...objectsFollowers];
-    return await this.newMessage([messageId], "Delete", to);
+    const objectsFollowers = `${id}/followers}`;
+    const to = [actorFollowers, objectsFollowers];
+    return await this.newMessage([id], "Delete", to);
   }
 
   /**
@@ -566,6 +570,7 @@ export class ChatterNet {
    * @returns the actor document
    */
   async getDocument(id: string): Promise<WithId | undefined> {
+    if (await this.isDeleted(id)) return undefined;
     let document: WithId | undefined = undefined;
     // try first from local store
     if (!document) document = await this.dbs.peer.document.get(id);

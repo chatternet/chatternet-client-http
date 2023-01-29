@@ -4,7 +4,7 @@ import type { Key } from "./signatures.js";
 import { Ed25519VerificationKey2020 } from "@digitalbazaar/ed25519-verification-key-2020";
 import { IDBPDatabase, openDB } from "idb/with-async-ittr";
 
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export interface IdName {
   id: string;
@@ -522,7 +522,7 @@ export class DbPeer {
     readonly document: StoreDocument,
     readonly messageDocument: StoreMessageDocument,
     readonly viewMessage: StoreViewMessage,
-    readonly deletedMessage: StoreDocumentId,
+    readonly deleted: StoreDocumentId,
     readonly idName: StoreIdName
   ) {}
 
@@ -533,7 +533,7 @@ export class DbPeer {
     let storeDocument: StoreDocument | undefined = undefined;
     let storeMessageDocument: StoreMessageDocument | undefined = undefined;
     let storeViewMessage: StoreViewMessage | undefined = undefined;
-    let storeDeletedMessage: StoreDocumentId | undefined = undefined;
+    let storeDeleted: StoreDocumentId | undefined = undefined;
     let storeIdName: StoreIdName | undefined = undefined;
     const db = await openDB(name, DB_VERSION, {
       upgrade: (db) => {
@@ -543,7 +543,7 @@ export class DbPeer {
         storeDocument = StoreDocument.create(db);
         storeMessageDocument = StoreMessageDocument.create(db);
         storeViewMessage = StoreViewMessage.create(db);
-        storeDeletedMessage = StoreDocumentId.create(db, "DeletedMessage");
+        storeDeleted = StoreDocumentId.create(db, "Deleted");
         storeIdName = StoreIdName.create(db);
       },
     });
@@ -555,9 +555,7 @@ export class DbPeer {
       ? storeMessageDocument
       : new StoreMessageDocument(db);
     storeViewMessage = storeViewMessage ? storeViewMessage : new StoreViewMessage(db);
-    storeDeletedMessage = storeDeletedMessage
-      ? storeDeletedMessage
-      : new StoreDocumentId(db, "DeletedMessage");
+    storeDeleted = storeDeleted ? storeDeleted : new StoreDocumentId(db, "Deleted");
     storeIdName = storeIdName ? storeIdName : new StoreIdName(db);
     return new DbPeer(
       db,
@@ -567,7 +565,7 @@ export class DbPeer {
       storeDocument,
       storeMessageDocument,
       storeViewMessage,
-      storeDeletedMessage,
+      storeDeleted,
       storeIdName
     );
   }
@@ -579,7 +577,7 @@ export class DbPeer {
     await this.document.clear();
     await this.messageDocument.clear();
     await this.viewMessage.clear();
-    await this.deletedMessage.clear();
+    await this.deleted.clear();
     await this.idName.clear();
   }
 }

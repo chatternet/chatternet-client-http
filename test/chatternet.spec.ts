@@ -114,26 +114,12 @@ describe("chatter net", () => {
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const messageObjectDoc = await chatterNet1.newNote("abcd", await chatterNet1.toSelf());
-    // cannot delete a message which is not yet known
-    assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
     // if local has message, it can be deleted
     await chatterNet1.storeMessageDocuments(messageObjectDoc);
     const deleteMessage = await chatterNet1.newDelete(messageObjectDoc.message.id);
     assert.ok(deleteMessage);
     assert.equal(deleteMessage.type, "Delete");
     assert.deepEqual(deleteMessage.object, [messageObjectDoc.message.id]);
-  });
-
-  it("doesnt build delete message for other actor", async () => {
-    await ChatterNet.clearDbs();
-    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
-    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
-    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
-    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
-    const messageObjectDoc = await chatterNet2.newNote("abcd", await chatterNet2.toSelf());
-    await chatterNet1.storeMessageDocuments(messageObjectDoc);
-    // cannot delete a message with different actor
-    assert.ok(!(await chatterNet1.newDelete(messageObjectDoc.message.id)));
   });
 
   it("follows unfollows and lists follows", async () => {
@@ -393,11 +379,11 @@ describe("chatter net", () => {
     assert.equal((await chatterNet1.getDocument(note.documents[0].id))?.id, note.documents[0].id);
     assert.equal((await listMessages(await chatterNet1.buildMessageIter())).length, 2);
     // message is not deleted
-    assert.ok(!(await chatterNet1.messageIsDeleted(note.message.id)));
+    assert.ok(!(await chatterNet1.isDeleted(note.message.id)));
     // removes message
-    await chatterNet1.deleteMessageLocal(note.message.id);
+    await chatterNet1.deleteLocalId(note.message.id);
     // message is deleted
-    assert.ok(await chatterNet1.messageIsDeleted(note.message.id));
+    assert.ok(await chatterNet1.isDeleted(note.message.id));
     // can no longer retrieve message object
     assert.ok(!(await chatterNet1.getDocument(note.message.id)));
     assert.ok(!(await chatterNet1.getDocument(note.documents[0].id)));
