@@ -407,7 +407,7 @@ export class ChatterNet {
     const did = this.getLocalDid();
     const actorId = ChatterNet.actorFromDid(did);
     const actorFollowers = ChatterNet.followersFromId(actorId);
-    const objectsFollowers = `${id}/followers}`;
+    const objectsFollowers = `${id}/followers`;
     const to = [actorFollowers, objectsFollowers];
     return await this.newMessage([id], "Delete", to);
   }

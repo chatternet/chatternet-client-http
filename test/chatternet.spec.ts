@@ -307,6 +307,26 @@ describe("chatter net", () => {
     assert.ok(new Set(messages3.map((x) => x.id)).has(viewMessage.id));
   });
 
+  it("deletes messages and documents with server", async () => {
+    if (defaultServers.length <= 0) return;
+
+    await clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+
+    // did1 posts
+    const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
+    await chatterNet1.postMessageDocuments(note);
+    // gets object
+    assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
+    assert.equal((await chatterNet1.getDocument(note.documents[0].id))?.id, note.documents[0].id);
+
+    const deleteDocument = await chatterNet1.newDelete(note.documents[0].id);
+    const deleteMessage = await chatterNet1.newDelete(note.message.id);
+    await chatterNet1.postMessageDocuments({ message: deleteDocument, documents: [] });
+    await chatterNet1.postMessageDocuments({ message: deleteMessage, documents: [] });
+  });
+
   it("gets messages from actor with server", async () => {
     if (defaultServers.length <= 0) return;
     await clearDbs();
