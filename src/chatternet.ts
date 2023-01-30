@@ -1,5 +1,6 @@
 import * as DidKey from "./didkey.js";
 import { MessageIter } from "./messageiter.js";
+import { didFromActorId } from "./model/actor.js";
 import type { Actor, Message, WithId } from "./model/index.js";
 import * as Model from "./model/index.js";
 import { PageIter } from "./pageiter.js";
@@ -345,7 +346,9 @@ export class ChatterNet {
    * @param messageDocuments the message and associated documents to post
    */
   async postMessageDocuments(messageDocuments: MessageDocuments) {
-    await this.servers.postMessage(messageDocuments.message, this.getLocalDid());
+    const did = didFromActorId(messageDocuments.message.actor);
+    if (did == null) throw Error("message actor is invalid");
+    await this.servers.postMessage(messageDocuments.message, did);
     for (const objectDoc of messageDocuments.documents) await this.postDocument(objectDoc);
   }
 
