@@ -570,11 +570,12 @@ export class ChatterNet {
    * @param id the actor ID
    * @returns the actor document
    */
-  async getDocument(id: string): Promise<WithId | undefined> {
+  async getDocument(id: string, localOnly: boolean = false): Promise<WithId | undefined> {
     if (await this.isDeleted(id)) return undefined;
     let document: WithId | undefined = undefined;
     // try first from local store
     if (!document) document = await this.dbs.peer.document.get(id);
+    if (localOnly) return;
     // then from servers
     if (!document) document = await this.servers.getDocument(id);
     return document;

@@ -263,6 +263,8 @@ describe("chatter net", () => {
     // did1 posts
     const note = await chatterNet1.newNote("Hi!", await chatterNet1.toSelf());
     await chatterNet1.postMessageDocuments(note);
+    // can't get from local
+    assert.ok(!(await chatterNet1.getDocument(note.message.id, true)));
     // gets object
     assert.equal((await chatterNet1.getDocument(note.message.id))?.id, note.message.id);
     assert.equal((await chatterNet1.getDocument(note.documents[0].id))?.id, note.documents[0].id);
