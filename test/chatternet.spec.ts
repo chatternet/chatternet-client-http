@@ -2,6 +2,7 @@ import { ChatterNet, DidKey, MessageIter } from "../src/index.js";
 import { didFromActorId } from "../src/model/actor.js";
 import type { Actor, Message } from "../src/model/index.js";
 import type { ServerInfo } from "../src/storage.js";
+import * as Storage from "../src/storage.js";
 import * as assert from "assert";
 import "fake-indexeddb/auto";
 import { get } from "lodash-es";
@@ -23,6 +24,11 @@ function actorToServerInfo(actor: Actor): ServerInfo {
   return { url, did };
 }
 
+async function clearDbs() {
+  await (await Storage.DbDevice.new()).clear();
+  await (await Storage.DbPeer.new()).clear();
+}
+
 describe("chatter net", () => {
   const defaultServersActor: Actor[] = process.env.CHATTERNET_TEST_SERVER
     ? [JSON.parse(process.env.CHATTERNET_TEST_SERVER)]
@@ -30,13 +36,13 @@ describe("chatter net", () => {
   const defaultServers: ServerInfo[] = defaultServersActor.map(actorToServerInfo);
 
   it("builds from new account", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     await ChatterNet.new(did, "abc", defaultServers);
   });
 
   it("lists accounts and names", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "some name 2", "abc");
     const did3 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
@@ -49,13 +55,13 @@ describe("chatter net", () => {
   });
 
   it("doesnt build for wrong password", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     assert.rejects(() => ChatterNet.new(did, "abcd", []));
   });
 
   it("changes name and builds with new name", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
@@ -69,7 +75,7 @@ describe("chatter net", () => {
   });
 
   it("changes password and builds with new password", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
@@ -81,14 +87,14 @@ describe("chatter net", () => {
   });
 
   it("doesnt change password with wrong password", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     assert.rejects(() => chatterNet.changePassword("abcd", "abcd"));
   });
 
   it("builds a message", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const followers = ChatterNet.followersFromId(ChatterNet.actorFromDid(did));
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
@@ -98,7 +104,7 @@ describe("chatter net", () => {
   });
 
   it("builds a note", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const { documents } = await chatterNet.newNote("abcd", await chatterNet.toSelf());
@@ -110,7 +116,7 @@ describe("chatter net", () => {
   });
 
   it("builds a delete message", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const messageObjectDoc = await chatterNet1.newNote("abcd", await chatterNet1.toSelf());
@@ -123,7 +129,7 @@ describe("chatter net", () => {
   });
 
   it("follows unfollows and lists follows", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     {
       const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
@@ -151,7 +157,7 @@ describe("chatter net", () => {
   });
 
   it("builds a listen server", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const { message } = await chatterNet.newListen("did:example:a");
@@ -160,7 +166,7 @@ describe("chatter net", () => {
   });
 
   it("builds a view message", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
@@ -175,7 +181,7 @@ describe("chatter net", () => {
   });
 
   it("doest build a view of a view", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
@@ -187,7 +193,7 @@ describe("chatter net", () => {
   });
 
   it("doest build a view of a message by self", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
     const followers1 = ChatterNet.followersFromId(ChatterNet.actorFromDid(did1));
@@ -197,7 +203,7 @@ describe("chatter net", () => {
   });
 
   it("re-uses a view message", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
@@ -212,7 +218,7 @@ describe("chatter net", () => {
   });
 
   it("builds actor", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const { message, documents } = await chatterNet.buildActor();
@@ -224,7 +230,7 @@ describe("chatter net", () => {
 
   it("posts and gets actor with server", async () => {
     if (defaultServers.length <= 0) return;
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     await chatterNet.postMessageDocuments(await chatterNet.buildActor());
@@ -234,7 +240,7 @@ describe("chatter net", () => {
   });
 
   it("posts and gets actor with local", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", []);
     await chatterNet.storeMessageDocuments(await chatterNet.buildActor());
@@ -252,7 +258,7 @@ describe("chatter net", () => {
   it("posts and gets messages with server", async () => {
     if (defaultServers.length <= 0) return;
 
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const did3 = await ChatterNet.newAccount(await DidKey.newKey(), "name3", "abc");
@@ -303,7 +309,7 @@ describe("chatter net", () => {
 
   it("gets messages from actor with server", async () => {
     if (defaultServers.length <= 0) return;
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
@@ -318,7 +324,7 @@ describe("chatter net", () => {
 
   it("gets create message for object with server", async () => {
     if (defaultServers.length <= 0) return;
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     // did1 posts
@@ -333,7 +339,7 @@ describe("chatter net", () => {
 
   it("doesnt post invalid message with server", async () => {
     if (defaultServers.length <= 0) return;
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
@@ -345,7 +351,7 @@ describe("chatter net", () => {
 
   it("doesnt post invalid document with server", async () => {
     if (defaultServers.length <= 0) return;
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const note = await chatterNet.newNote("hello", await chatterNet.toSelf());
@@ -355,7 +361,7 @@ describe("chatter net", () => {
   });
 
   it("posts and gets messages with local", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
@@ -370,7 +376,7 @@ describe("chatter net", () => {
   });
 
   it("unstores local message", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const chatterNet1 = await ChatterNet.new(did1, "abc", []);
     // did1 posts
@@ -394,7 +400,7 @@ describe("chatter net", () => {
   });
 
   it("builds message affinity", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const did3 = await ChatterNet.newAccount(await DidKey.newKey(), "name3", "abc");
@@ -432,7 +438,7 @@ describe("chatter net", () => {
   it("iterates followers with server", async () => {
     if (defaultServers.length <= 0) return;
 
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
     const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
     const did3 = await ChatterNet.newAccount(await DidKey.newKey(), "name3", "abc");
@@ -464,7 +470,7 @@ describe("chatter net", () => {
   });
 
   it("builds a tag", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     const tag = await chatterNet.buildTag("abc");
@@ -472,14 +478,14 @@ describe("chatter net", () => {
   });
 
   it("gets local did", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     assert.equal(chatterNet.getLocalDid(), did);
   });
 
   it("gets local name", async () => {
-    await ChatterNet.clearDbs();
+    await clearDbs();
     const did = await ChatterNet.newAccount(await DidKey.newKey(), "some name", "abc");
     const chatterNet = await ChatterNet.new(did, "abc", defaultServers);
     assert.equal(chatterNet.getLocalName(), "some name");
