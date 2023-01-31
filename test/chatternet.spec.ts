@@ -342,6 +342,32 @@ describe("chatter net", () => {
     assert.ok(new Set(messages.map((x) => x.id)).has(note.message.id));
   });
 
+  it("gets messages with audience with server", async () => {
+    if (defaultServers.length <= 0) return;
+    await clearDbs();
+    const did1 = await ChatterNet.newAccount(await DidKey.newKey(), "name1", "abc");
+    const did2 = await ChatterNet.newAccount(await DidKey.newKey(), "name2", "abc");
+    const chatterNet1 = await ChatterNet.new(did1, "abc", defaultServers);
+    const chatterNet2 = await ChatterNet.new(did2, "abc", defaultServers);
+    // did2 follows did1
+    await chatterNet2.postMessageDocuments(
+      await chatterNet2.newFollow({
+        id: ChatterNet.actorFromDid(did1),
+        name: "name",
+        timestamp: 10,
+      })
+    );
+    // did1 posts
+    const tag = await chatterNet1.buildTag("tag");
+    const note = await chatterNet1.newNote("Hi!", [tag]);
+    await chatterNet1.postMessageDocuments(note);
+    // iterates message
+    const messages = await listMessages(
+      await chatterNet2.buildMessageIterWith([`${tag.id}/followers`])
+    );
+    assert.ok(new Set(messages.map((x) => x.id)).has(note.message.id));
+  });
+
   it("gets create message for object with server", async () => {
     if (defaultServers.length <= 0) return;
     await clearDbs();

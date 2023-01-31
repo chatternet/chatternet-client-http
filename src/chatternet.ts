@@ -644,6 +644,23 @@ export class ChatterNet {
   }
 
   /**
+   * Build a new message iterator for the local actor iterating over only
+   * messages with an audience in `audiences`.
+   *
+   * See to [`buildMessageIter`].
+   *
+   * @returns the message iterator
+   */
+  buildMessageIterWith(audiences: string[]): MessageIter {
+    const params = new URLSearchParams({
+      audiences: JSON.stringify(audiences),
+    });
+    const uri = `${this.getLocalDid()}/actor/inbox/with?${params.toString()}`;
+    const pageIter = PageIter.new<Model.Message>(uri, this.servers, 32, Model.isMessage);
+    return new MessageIter(this.dbs.peer, pageIter);
+  }
+
+  /**
    * Build a new iterator over followers.
    *
    * This is an object which provides iteration over all followers of the local
